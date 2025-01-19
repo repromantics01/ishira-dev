@@ -68,3 +68,17 @@ ios/ServiceDefinitions.json
 ios/Runner.xcworkspace
 ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
 ios/Runner.xcworkspace/xcuserdata
+
+# macOS
+macos/Flutter/ephemeral/
+macos/Flutter/Flutter.podspec
+macos/Flutter/Flutter.framework
+macos/Flutter/Flutter.podspec
+macos/Flutter/Flutter.xcworkspace
+macos/Flutter/Flutter.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+macos/Flutter/Flutter.xcworkspace/xcuserdata
+
+# Linux
+linux/flutter/ephemeral/
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
