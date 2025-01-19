@@ -2,8 +2,9 @@ import 'dart:convert';
 
 //change to org_admin, user, and moderator
 enum AccountType {
-  Adopter,
-  Surrenderer,
+  User,
+  OrgAdmin,
+  Moderator,
 }
 class Account {
   int account_id;

@@ -3,7 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/services/firebase_service.dart';
 
+
+
 class UserRegistrationForm extends StatefulWidget {
+  const UserRegistrationForm({super.key});
+
   @override
   _UserRegistrationFormState createState() => _UserRegistrationFormState();
 }
@@ -166,7 +170,7 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
 
                       Account account = Account(
                         account_id: await _databaseService.getNextAccountId(),
-                        account_type: userType == 'Adopter' ? AccountType.Adopter : AccountType.Surrenderer,
+                        account_type: AccountType.User,
                         account_username: username,
                         account_email: email,
                         account_password: password,

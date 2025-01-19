@@ -22,6 +22,8 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -37,7 +39,7 @@ class MyApp extends StatelessWidget {
 class ErrorApp extends StatelessWidget {
   final String error;
 
-  ErrorApp({required this.error});
+  const ErrorApp({super.key, required this.error});
 
   @override
   Widget build(BuildContext context) {
