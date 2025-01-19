@@ -1,26 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-class UserRegistrationForm extends StatefulWidget {
+class ModeratorRegistrationForm extends StatefulWidget {
   @override
-  _UserRegistrationFormState createState() => _UserRegistrationFormState();
+  _ModeratorRegistrationFormState createState() => _ModeratorRegistrationFormState();
 }
 
-class _UserRegistrationFormState extends State<UserRegistrationForm> {
+class _ModeratorRegistrationFormState extends State<ModeratorRegistrationForm> {
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-  String _userType = 'Adopter';
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('User Sign up'),
+        title: Text('Moderator Sign up'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -106,73 +103,13 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                   return null;
                 },
               ),
-              SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: _userType,
-                decoration: InputDecoration(
-                  labelText: 'User Type',
-                  border: OutlineInputBorder(),
-                ),
-                items:
-                    <String>['Adopter', 'Surrenderer'].map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (newValue) {
-                  setState(() {
-                    _userType = newValue!;
-                  });
-                },
-              ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () async {
+                onPressed: () {
                   if (_formKey.currentState!.validate()) {
-                    if (_passwordController.text != _confirmPasswordController.text) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Passwords do not match')),
-                      );
-                      return;
-                    }
-                    // Process data
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Processing Data')),
                     );
-
-                    final String username = _usernameController.text;
-                    final String email = _emailController.text;
-                    final String password = _passwordController.text;
-                    final String userType = _userType;
-
-                    try {
-                      final userCredential = await FirebaseAuth.instance
-                          .createUserWithEmailAndPassword(
-                        email: email,
-                        password: password,
-                      );
-
-                      // Add user data to Firestore
-                      await FirebaseFirestore.instance
-                          .collection('account')
-                          .doc(userCredential.user!.uid)
-                          .set({
-                        'username': username,
-                        'email': email,
-                        'userType': userType,
-                      });
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('User created successfully')),
-                      );
-                      print(userCredential);
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error creating user: $e')),
-                      );
-                      print('Error: $e');
-                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(

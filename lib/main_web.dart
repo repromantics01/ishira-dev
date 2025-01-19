@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/firebase_options.dart';
-import 'package:pawsmatch/pages/registration/user_registration_form.dart';
+import 'package:pawsmatch/pages/web/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: UserRegistrationForm(),
+      home: WebHomepage(),
     );
   }
 }
