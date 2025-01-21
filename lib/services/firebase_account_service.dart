@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/models/account.dart';
+import 'dart:core';
 
 const String ACCOUNT_COLLECTION_REF = "account";
 
@@ -15,17 +16,29 @@ class DatabaseAccountService {
     );
   }
 
-  Stream<QuerySnapshot<Account>> getAccount() {
-    return _accountCollectionRef.snapshots();
-  } 
+  // Stream<QuerySnapshot<Account>> getAccount() {
+  //   return _accountCollectionRef.snapshots();
+  // } 
 
-  Future<String> addAccount(Account account) async {
+  Future<void> addAccount(Account account, String uid) async {
     try {
-      DocumentReference<Account> docRef = await _accountCollectionRef.add(account);
-      return docRef.id;
+      await _accountCollectionRef.doc(uid).set(account);
     } catch (e) {
       print('Error adding account: $e');
-      return '';
+    }
+  }
+
+  Future<Account> getAccount(String uid) async {
+    try {
+      final docSnapshot = await _accountCollectionRef.doc(uid).get();
+      if (docSnapshot.exists) {
+        return docSnapshot.data()!;
+      } else {
+        throw Exception('Account not found');
+      }
+    } catch (e) {
+      print('Error getting account: $e');
+      rethrow;
     }
   }
 

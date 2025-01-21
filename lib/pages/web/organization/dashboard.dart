@@ -1,127 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pawsmatch/models/organization.dart';
+import 'package:pawsmatch/services/firebase_organization_service.dart';
 
-class ModeratorRegistrationForm extends StatefulWidget {
+class OrganizationDashboard extends StatefulWidget {
+  const OrganizationDashboard({super.key});
+
   @override
-  _ModeratorRegistrationFormState createState() => _ModeratorRegistrationFormState();
+  _OrganizationDashboardState createState() => _OrganizationDashboardState();
 }
 
-class _ModeratorRegistrationFormState extends State<ModeratorRegistrationForm> {
-
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+class _OrganizationDashboardState extends State<OrganizationDashboard> {
+  final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Moderator Sign up'),
+        title: Text('Organization Dashboard'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: <Widget>[
-              Text(
-                'Sign Up',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20),
-              TextFormField(
-                controller: _usernameController,
-                enableSuggestions: false,
-                autocorrect: false,
-                decoration: InputDecoration(
-                  labelText: 'Username',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a username';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 10),
-              TextFormField(
-                controller: _emailController,
-                enableSuggestions: false,
-                autocorrect: false,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an email';
-                  }
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 10),
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-                enableSuggestions: false,
-                autocorrect: false,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a password';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 10),
-              TextFormField(
-                controller: _confirmPasswordController,
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-                enableSuggestions: false,
-                autocorrect: false,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please confirm your password';
-                  }
-                  if (value != _passwordController.text) {
-                    return 'Passwords do not match';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Processing Data')),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 15),
-                  textStyle: TextStyle(fontSize: 18),
-                ),
-                child: Text('Submit'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+      body: Placeholder(),
+      );
   }
 }

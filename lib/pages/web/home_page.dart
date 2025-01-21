@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pawsmatch/pages/web/moderator/dashboard.dart';
+import 'package:pawsmatch/pages/web/organization/dashboard.dart';
+import 'package:pawsmatch/services/firebase_account_service.dart';
+import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/pages/web/organization/sign_up.dart';
 
 class WebHomepage extends StatefulWidget {
@@ -7,11 +12,10 @@ class WebHomepage extends StatefulWidget {
 }
 
 class _WebHomepageState extends State<WebHomepage> {
-
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  String _loginType = 'Org Administrator';
+  final DatabaseAccountService _databaseAccountService = DatabaseAccountService();
 
   @override
   Widget build(BuildContext context) {
@@ -69,11 +73,33 @@ class _WebHomepageState extends State<WebHomepage> {
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Processing Data')),
-                    );
+                    try {
+                      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+                        email: _emailController.text,
+                        password: _passwordController.text,
+                      );
+
+                      String uid = userCredential.user!.uid;
+                      Account account = await _databaseAccountService.getAccount(uid);
+
+                      if (account.account_type == AccountType.Moderator) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => ModeratorDashboard()),
+                        );
+                      } else {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => OrganizationDashboard()),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error logging in: $e')),
+                      );
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(

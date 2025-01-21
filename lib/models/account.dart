@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 //change to org_admin, user, and moderator
 enum AccountType {
@@ -6,6 +7,7 @@ enum AccountType {
   OrgAdmin,
   Moderator,
 }
+
 class Account {
   int account_id;
   AccountType account_type;
@@ -40,13 +42,13 @@ class Account {
     DateTime? date_created,
   }) {
     return Account(
-      account_id: account_id?? this.account_id,
-      account_type: account_type?? this.account_type,
-      account_username: account_username?? this.account_username,
-      account_email: account_email?? this.account_email,
-      account_password: account_password?? this.account_password,
-      date_created: date_created?? this.date_created
-      );
+      account_id: account_id ?? this.account_id,
+      account_type: account_type ?? this.account_type,
+      account_username: account_username ?? this.account_username,
+      account_email: account_email ?? this.account_email,
+      account_password: account_password ?? this.account_password,
+      date_created: date_created ?? this.date_created,
+    );
   }
 
   Map<String, dynamic?> toJson() {
@@ -59,5 +61,4 @@ class Account {
       'date_created': date_created.toIso8601String(),
     };
   }
-
 }

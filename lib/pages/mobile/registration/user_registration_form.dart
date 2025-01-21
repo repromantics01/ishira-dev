@@ -20,9 +20,8 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-  String _userType = 'User';
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  String _userType = 'Adopter';
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +167,7 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                         password: password,
                       );
 
+                      // Add account to database using user UID as document ID
                       Account account = Account(
                         account_id: await _databaseAccountService.getNextAccountId(),
                         account_type: AccountType.User,
@@ -176,7 +176,8 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                         account_password: password,
                         date_created: DateTime.now(),
                       );
-                      await _databaseAccountService.addAccount(account);
+                      String uid = userCredential.user!.uid;
+                      await _databaseAccountService.addAccount(account, uid);
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('User created successfully')),

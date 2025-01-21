@@ -37,4 +37,30 @@ class FirebaseOrganizationService {
       return 1; // Default to 1 if there's an error
     }
   }
+
+  Future<void> updateOrganization(int orgId, Organization updatedOrganization) async {
+    try {
+      final querySnapshot = await _organizationCollectionRef
+          .where('org_id', isEqualTo: orgId)
+          .limit(1)
+          .get();
+      if (querySnapshot.docs.isNotEmpty) {
+        await querySnapshot.docs.first.reference.set(updatedOrganization);
+      }
+    } catch (e) {
+      print('Error updating organization: $e');
+    }
+  }
+
+  Future<List<Organization>> getUnverifiedOrgs() async {
+    try {
+      final querySnapshot = await _organizationCollectionRef
+          .where('isVerified', isEqualTo: false)
+          .get();
+      return querySnapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      print('Error getting unverified organizations: $e');
+      return [];
+    }
+  }
 }

@@ -116,7 +116,7 @@ class _SignUpForm2State extends State<SignUpForm2> {
                         password: widget.password,
                       );
 
-                      // Add account to database and get document ID
+                      // Add account to database using user UID as document ID
                       Account account = Account(
                         account_id: await _databaseService.getNextAccountId(),
                         account_type: AccountType.OrgAdmin,
@@ -125,7 +125,8 @@ class _SignUpForm2State extends State<SignUpForm2> {
                         account_password: widget.password,
                         date_created: DateTime.now(),
                       );
-                      String accountId = await _databaseService.addAccount(account);
+                      String uid = userCredential.user!.uid;
+                      await _databaseService.addAccount(account, uid);
 
                       // Add organization details to database
                       Organization organization = Organization(
@@ -133,7 +134,8 @@ class _SignUpForm2State extends State<SignUpForm2> {
                         org_name: _orgNameController.text,
                         org_proof_of_validation: _proofOfValidationFiles.map((file) => file.name).join(', '),
                         date_created: DateTime.now(),
-                        admin_ids: [accountId],
+                        admin_ids: [uid],
+                        isVerified: false,
                       );
                       await _firebaseOrganizationService.addOrganization(organization);
                         
