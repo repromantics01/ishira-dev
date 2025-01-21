@@ -1,4 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:pawsmatch/models/account.dart';
+import 'package:pawsmatch/pages/web/organization/sign_up2.dart';
+import 'package:pawsmatch/services/firebase_account_service.dart';
 
 class SignUpForm extends StatefulWidget {
   const SignUpForm({super.key});
@@ -8,12 +12,14 @@ class SignUpForm extends StatefulWidget {
 }
 
 class _SignUpFormState extends State<SignUpForm> {
+  final DatabaseAccountService _databaseService = DatabaseAccountService();
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +44,12 @@ class _SignUpFormState extends State<SignUpForm> {
                 enableSuggestions: false,
                 autocorrect: false,
                 decoration: InputDecoration(
-                  labelText: 'Organization Name',
+                  labelText: 'Username',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter your organization name';
+                    return 'Please enter your account username';
                   }
                   return null;
                 },
@@ -67,17 +73,6 @@ class _SignUpFormState extends State<SignUpForm> {
                   }
                   return null;
                 },
-              ),
-              SizedBox(height: 10),
-              TextFormField(
-                controller: _emailController,
-                enableSuggestions: false,
-                autocorrect: false,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Contact Number',
-                  border: OutlineInputBorder(),
-                ),
               ),
               SizedBox(height: 10),
               TextFormField(
@@ -118,10 +113,17 @@ class _SignUpFormState extends State<SignUpForm> {
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Processing Data')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SignUpForm2(
+                          username: _usernameController.text,
+                          email: _emailController.text,
+                          password: _passwordController.text,
+                        ),
+                      ),
                     );
                   }
                 },
@@ -129,7 +131,7 @@ class _SignUpFormState extends State<SignUpForm> {
                   padding: EdgeInsets.symmetric(vertical: 15),
                   textStyle: TextStyle(fontSize: 18),
                 ),
-                child: Text('Submit'),
+                child: Text('Next'),
               ),
             ],
           ),

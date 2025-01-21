@@ -3,12 +3,12 @@ import 'package:pawsmatch/models/account.dart';
 
 const String ACCOUNT_COLLECTION_REF = "account";
 
-class DatabaseService {
+class DatabaseAccountService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   late final CollectionReference<Account> _accountCollectionRef;
 
-  DatabaseService() {
+  DatabaseAccountService() {
     _accountCollectionRef = _firestore.collection(ACCOUNT_COLLECTION_REF).withConverter<Account>(
       fromFirestore: (snapshots, _) => Account.fromJson(snapshots.data()!),
       toFirestore: (account, _) => account.toJson(),
@@ -19,11 +19,13 @@ class DatabaseService {
     return _accountCollectionRef.snapshots();
   } 
 
-  Future<void> addAccount(Account account) async {
+  Future<String> addAccount(Account account) async {
     try {
-      await _accountCollectionRef.add(account);
+      DocumentReference<Account> docRef = await _accountCollectionRef.add(account);
+      return docRef.id;
     } catch (e) {
       print('Error adding account: $e');
+      return '';
     }
   }
 

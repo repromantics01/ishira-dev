@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/account.dart';
-import 'package:pawsmatch/services/firebase_service.dart';
+import 'package:pawsmatch/services/firebase_account_service.dart';
 
 
 
@@ -14,7 +14,7 @@ class UserRegistrationForm extends StatefulWidget {
 
 class _UserRegistrationFormState extends State<UserRegistrationForm> {
 
-  final DatabaseService _databaseService = DatabaseService();
+  final DatabaseAccountService _databaseAccountService = DatabaseAccountService();
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
@@ -22,7 +22,7 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  String _userType = 'Adopter';
+  String _userType = 'User';
 
   @override
   Widget build(BuildContext context) {
@@ -169,14 +169,14 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                       );
 
                       Account account = Account(
-                        account_id: await _databaseService.getNextAccountId(),
+                        account_id: await _databaseAccountService.getNextAccountId(),
                         account_type: AccountType.User,
                         account_username: username,
                         account_email: email,
                         account_password: password,
                         date_created: DateTime.now(),
                       );
-                      await _databaseService.addAccount(account);
+                      await _databaseAccountService.addAccount(account);
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('User created successfully')),

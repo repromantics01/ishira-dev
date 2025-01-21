@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pawsmatch/pages/web/sign_up.dart';
+import 'package:pawsmatch/pages/web/organization/sign_up.dart';
 
 class WebHomepage extends StatefulWidget {
   @override
