@@ -4,8 +4,8 @@ PawsMatch is a Flutter-based application designed to help pet rescue organizatio
 
 ## Table of Contents
 
-- [Getting Started](https://github.com/repromantics01/pawsmatch/edit/main/README.md#getting-started)
-- [Development Rules](https://github.com/repromantics01/pawsmatch/edit/main/README.md#development-rules)
+- [Getting Started](#getting-started)
+- [Development Rules](#development-rules)
 
 ## Getting Started
 
