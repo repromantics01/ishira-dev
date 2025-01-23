@@ -43,3 +43,42 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# VS Code
+.vscode/
+
+# Android
+.gradle/
+.idea/
+.vscode/
+android/.gradle/
+android/app/build/
+android/local.properties
+android/.idea/
+android/.vscode/
+
+# iOS
+ios/Flutter/.last_build_id
+ios/Pods
+ios/.symlinks
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/ServiceDefinitions.json
+ios/Runner.xcworkspace
+ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+ios/Runner.xcworkspace/xcuserdata
+
+# macOS
+macos/Flutter/ephemeral/
+macos/Flutter/Flutter.podspec
+macos/Flutter/Flutter.framework
+macos/Flutter/Flutter.podspec
+macos/Flutter/Flutter.xcworkspace
+macos/Flutter/Flutter.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+macos/Flutter/Flutter.xcworkspace/xcuserdata
+
+# Linux
+linux/flutter/ephemeral/
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
