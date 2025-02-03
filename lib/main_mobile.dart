@@ -2,8 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/firebase_options.dart';
-import 'package:pawsmatch/pages/mobile/registration/user_registration_form.dart';
+import 'package:pawsmatch/pages/mobile/home_page.dart';
 
+//TODO: Prohibit organization accounts to login to mobile app
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
@@ -31,7 +32,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: UserRegistrationForm(),
+      home: MobileHomepage(),
     );
   }
 }

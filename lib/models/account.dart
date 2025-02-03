@@ -9,7 +9,7 @@ enum AccountType {
 }
 
 class Account {
-  int account_id;
+  String account_id;
   AccountType account_type;
   String account_username;
   String account_email;
@@ -26,7 +26,7 @@ class Account {
   });
 
   Account.fromJson(Map<String, dynamic> json)
-      : account_id = json['account_id'] as int,
+      : account_id = json['account_id'] as String,
         account_type = AccountType.values.firstWhere((e) => e.toString() == 'AccountType.' + json['account_type']),
         account_username = json['account_username'] as String,
         account_email = json['account_email'] as String,
@@ -34,7 +34,7 @@ class Account {
         date_created = DateTime.parse(json['date_created'] as String);
 
   Account copyWith({
-    int? account_id,
+    String? account_id,
     AccountType? account_type,
     String? account_username,
     String? account_email,

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:pawsmatch/firebase_options.dart';
 import 'package:pawsmatch/pages/web/home_page.dart';
 
+//TODO: Prohibit individual users login to website
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {

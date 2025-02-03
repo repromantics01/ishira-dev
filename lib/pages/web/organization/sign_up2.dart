@@ -118,7 +118,7 @@ class _SignUpForm2State extends State<SignUpForm2> {
 
                       // Add account to database using user UID as document ID
                       Account account = Account(
-                        account_id: await _databaseService.getNextAccountId(),
+                        account_id: userCredential.user!.uid,
                         account_type: AccountType.OrgAdmin,
                         account_username: widget.username,
                         account_email: widget.email,

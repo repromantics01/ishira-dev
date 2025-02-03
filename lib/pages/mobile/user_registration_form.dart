@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/account.dart';
+import 'package:pawsmatch/models/profile.dart';
+import 'package:pawsmatch/pages/mobile/home_page.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
-
-
+import 'package:pawsmatch/services/firebase_profile_service.dart';
 
 class UserRegistrationForm extends StatefulWidget {
   const UserRegistrationForm({super.key});
@@ -13,14 +14,17 @@ class UserRegistrationForm extends StatefulWidget {
 }
 
 class _UserRegistrationFormState extends State<UserRegistrationForm> {
-
-  final DatabaseAccountService _databaseAccountService = DatabaseAccountService();
+  final DatabaseAccountService _databaseAccountService =
+      DatabaseAccountService();
+  final FirebaseProfileService _firebaseProfileService =
+      FirebaseProfileService();
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   String _userType = 'Adopter';
 
   @override
@@ -120,8 +124,7 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                   labelText: 'User Type',
                   border: OutlineInputBorder(),
                 ),
-                items:
-                    <String>['Adopter', 'Surrenderer'].map((String value) {
+                items: <String>['Adopter', 'Surrenderer'].map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),
@@ -133,18 +136,12 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                   });
                 },
               ),
-                SizedBox(height: 10),
-                TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/login');
-                },
-                child: Text('Already have an account? Log in'),
-                ),
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    if (_passwordController.text != _confirmPasswordController.text) {
+                    if (_passwordController.text !=
+                        _confirmPasswordController.text) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Passwords do not match')),
                       );
@@ -169,7 +166,7 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
 
                       // Add account to database using user UID as document ID
                       Account account = Account(
-                        account_id: await _databaseAccountService.getNextAccountId(),
+                        account_id: userCredential.user!.uid,
                         account_type: AccountType.User,
                         account_username: username,
                         account_email: email,
@@ -179,11 +176,26 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                       String uid = userCredential.user!.uid;
                       await _databaseAccountService.addAccount(account, uid);
 
+                      Profile profile = Profile(
+                        account_id: userCredential.user!.uid,
+                        profile_id: userCredential.user!.uid,
+                        user_type: userType == 'Adopter'
+                            ? UserType.Adopter
+                            : UserType.Surrenderer,
+                        first_name: '',
+                        middle_name: '',
+                        last_name: '',
+                        suffix: '',
+                        bio: '',
+                        address: '',
+                        date_created: DateTime.now(),
+                      );
+                      await _firebaseProfileService.addProfile(profile);
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('User created successfully')),
                       );
                       print(userCredential);
-
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Error creating user: $e')),
@@ -198,7 +210,16 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
                 ),
                 child: Text('Submit'),
               ),
-
+              SizedBox(height: 10),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MobileHomepage()),
+                  );
+                },
+                child: Text('Already have an account? Log in'),
+              ),
             ],
           ),
         ),
