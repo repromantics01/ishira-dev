@@ -1,6 +1,7 @@
 # Miscellaneous
 *.class
 *.log
+.env
 *.pyc
 *.swp
 .DS_Store
@@ -44,7 +45,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-
 # VS Code
 .vscode/
 
@@ -82,3 +82,15 @@ macos/Flutter/Flutter.xcworkspace/xcuserdata
 linux/flutter/ephemeral/
 linux/flutter/generated_plugin_registrant.cc
 linux/flutter/generated_plugin_registrant.h
+
+# Ignore generated plugin files
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.framework
+ios/Flutter/app.podspec
+ios/Runner/GeneratedPluginRegistrant.*
+
+# Other common ignores
+*.hprof
+*.lock
+*.sublime-workspace
+*.sublime-project

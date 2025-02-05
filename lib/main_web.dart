@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/firebase_options.dart';
 import 'package:pawsmatch/pages/web/home_page.dart';
@@ -15,6 +16,11 @@ void main() async {
 
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
+    );
+
+    await Supabase.initialize(
+      url: const String.fromEnvironment('SUPABASE_URL'),
+      anonKey: const String.fromEnvironment('SUPABASE_KEY'),
     );
 
     runApp(MyApp());

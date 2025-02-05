@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'dart:core';
 
+import 'package:pawsmatch/models/profile.dart';
+
 const String ACCOUNT_COLLECTION_REF = "account";
 
 class DatabaseAccountService {
@@ -51,4 +53,6 @@ class DatabaseAccountService {
       return 1; // Default to 1 if there's an error
     }
   }
+
+  addProfile(Profile profile, String uid) {}
 }
