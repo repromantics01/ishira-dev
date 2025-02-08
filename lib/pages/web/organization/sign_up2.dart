@@ -128,17 +128,19 @@ class _SignUpForm2State extends State<SignUpForm2> {
                       String uid = userCredential.user!.uid;
                       await _databaseService.addAccount(account, uid);
 
+                      // Generate a new document ID for the organization
+                      String orgId = _firebaseOrganizationService.generateNewOrganizationId();
+
                       // Add organization details to database
                       Organization organization = Organization(
-                        org_id: await _firebaseOrganizationService.getNextOrganizationId(),
+                        org_id: orgId,
                         org_name: _orgNameController.text,
                         org_proof_of_validation: _proofOfValidationFiles.map((file) => file.name).join(', '),
                         date_created: DateTime.now(),
                         admin_ids: [uid],
                         isVerified: false,
                       );
-                      await _firebaseOrganizationService.addOrganization(organization);
-                        
+                      await _firebaseOrganizationService.addOrganizationWithId(organization, orgId);
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('User created successfully')),

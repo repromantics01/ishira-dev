@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Organization {
-  int org_id;
+  String org_id;
   String org_name;
   String org_proof_of_validation;
   DateTime date_created;
@@ -19,7 +19,7 @@ class Organization {
   });
 
   Organization.fromJson(Map<String, dynamic> json)
-      : org_id = json['org_id'] as int,
+      : org_id = json['org_id'] as String,
         org_name = json['org_name'] as String,
         org_proof_of_validation = json['org_proof_of_validation'] as String,
         date_created = (json['date_created'] is Timestamp)
@@ -29,7 +29,7 @@ class Organization {
         isVerified = json['isVerified'] as bool? ?? false;
 
   Organization copyWith({
-    int? org_id,
+    String? org_id,
     String? org_name,
     String? org_proof_of_validation,
     DateTime? date_created,

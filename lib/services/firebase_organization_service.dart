@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/date_symbols.dart';
 import 'package:pawsmatch/models/organization.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 
@@ -20,25 +21,20 @@ class FirebaseOrganizationService {
     return _organizationCollectionRef.snapshots();
   }
 
-  Future<void> addOrganization(Organization organization) async {
+
+  Future<void> addOrganizationWithId(Organization organization, String orgId) async {
     try {
-      await _organizationCollectionRef.add(organization);
+      await _organizationCollectionRef.doc(orgId).set(organization);
     } catch (e) {
       print('Error adding organization: $e');
     }
   }
 
-  Future<int> getNextOrganizationId() async {
-    try {
-      final querySnapshot = await _organizationCollectionRef.get();
-      return querySnapshot.docs.length + 1;
-    } catch (e) {
-      print('Error getting next organization ID: $e');
-      return 1; // Default to 1 if there's an error
-    }
+  String generateNewOrganizationId() {
+    return _organizationCollectionRef.doc().id;
   }
 
-  Future<void> updateOrganization(int orgId, Organization updatedOrganization) async {
+  Future<void> updateOrganization(String orgId, Organization updatedOrganization) async {
     try {
       final querySnapshot = await _organizationCollectionRef
           .where('org_id', isEqualTo: orgId)
@@ -50,6 +46,21 @@ class FirebaseOrganizationService {
     } catch (e) {
       print('Error updating organization: $e');
     }
+  }
+
+  Future<String> getOrganizationId(String orgId) async {
+    try {
+      final querySnapshot = await _organizationCollectionRef
+          .where('org_id', isEqualTo: orgId)
+          .limit(1)
+          .get();
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first.reference.id;
+      }
+    } catch (e) {
+      print('Error getting organization id: $e');
+    }
+    return ''; // Return an empty string or handle the error appropriately
   }
 
   Future<List<Organization>> getUnverifiedOrgs() async {
