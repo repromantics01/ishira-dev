@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/firebase_options.dart';
 import 'package:pawsmatch/pages/web/home_page.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 //TODO: Prohibit individual users login to website
 
@@ -18,13 +19,22 @@ void main() async {
       persistenceEnabled: true,
     );
 
+    // Load the .env file
+    await dotenv.load(fileName: ".env");
+
+    // Print debug statements to verify execution
+    print('Loading environment variables...');
+    print('Supabase URL: ${dotenv.env['SUPABASE_URL']}');
+    print('Supabase Key: ${dotenv.env['SUPABASE_KEY']}');
+
     await Supabase.initialize(
-      url: const String.fromEnvironment('SUPABASE_URL'),
-      anonKey: const String.fromEnvironment('SUPABASE_KEY'),
+      url: dotenv.env['SUPABASE_URL']!,
+      anonKey: dotenv.env['SUPABASE_KEY']!,
     );
 
     runApp(MyApp());
   } catch (e) {
+    print('Error: $e');
     runApp(ErrorApp(error: e.toString()));
   }
 }

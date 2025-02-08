@@ -4,9 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/firebase_options.dart';
 import 'package:pawsmatch/pages/mobile/home_page.dart';
-
-const supabaseUrl = 'https://pouskfxetpaocvzkzwsg.supabase.co';
-const supabaseKey = String.fromEnvironment('SUPABASE_KEY', defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvdXNrZnhldHBhb2N2emt6d3NnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg2NzQ4NzgsImV4cCI6MjA1NDI1MDg3OH0.aS8uwnumugUzd2CX4ZrEQTiU69nj6U_mP_sWc8GHvoQ');
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:io';
 
 //TODO: Prohibit organization accounts to login to mobile app
 Future<void> main() async {
@@ -20,12 +19,37 @@ Future<void> main() async {
       persistenceEnabled: true,
     );
 
-    // Print the Supabase key to verify it
-    print('Supabase Key: $supabaseKey');
+    // Print the current working directory
+    print('Current working directory: ${Directory.current.path}');
 
-    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
+    // Check if the .env file exists
+    if (File('.env').existsSync()) {
+      print('.env file found');
+    } else {
+      print('.env file not found');
+    }
+
+    // Load the .env file
+    try {
+      await dotenv.load(fileName: ".env");
+    } catch (e) {
+      print('Error loading .env file: $e');
+      throw FileNotFoundError('.env file not found');
+    }
+
+    // Print debug statements to verify execution
+    print('Loading environment variables...');
+    print('Supabase URL: ${dotenv.env['SUPABASE_URL']}');
+    print('Supabase Key: ${dotenv.env['SUPABASE_KEY']}');
+
+    await Supabase.initialize(
+      url: dotenv.env['SUPABASE_URL']!,
+      anonKey: dotenv.env['SUPABASE_KEY']!,
+    );
+
     runApp(MyApp());
   } catch (e) {
+    print('Error: $e');
     runApp(ErrorApp(error: e.toString()));
   }
 }
@@ -63,4 +87,11 @@ class ErrorApp extends StatelessWidget {
       ),
     );
   }
+}
+
+class FileNotFoundError implements Exception {
+  final String message;
+  FileNotFoundError(this.message);
+  @override
+  String toString() => 'FileNotFoundError: $message';
 }
