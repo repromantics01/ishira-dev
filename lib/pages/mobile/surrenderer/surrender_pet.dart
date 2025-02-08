@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pawsmatch/services/firebase_pet_service.dart';
+import 'package:pawsmatch/models/pet.dart';
+import 'package:pawsmatch/services/firebase_photo_service.dart';
 
 class SurrenderForm extends StatefulWidget {
   const SurrenderForm({Key? key}) : super(key: key);
@@ -13,49 +16,106 @@ class SurrenderForm extends StatefulWidget {
 
 class _SurrenderFormState extends State<SurrenderForm> {
   final _formKey = GlobalKey<FormState>();
-  String? _petName;
-  DateTime? _birthdate;
-  String? _address;
-  String? _bio;
-  String? _breed;
-  String? _gender;
-  String? _species;
+  final TextEditingController _petNameController = TextEditingController();
+  final TextEditingController _birthdateController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _breedController = TextEditingController();
+  final TextEditingController _genderController = TextEditingController();
+  final TextEditingController _speciesController = TextEditingController();
+  final TextEditingController _vaccinationStatusController = TextEditingController();
+  bool _isNeuteredOrSpayed = false;
   List<File> _petImages = [];
-  bool? _isNeuteredOrSpayed;
-  String? _vaccinationStatus;
-  double? _weight;
+  List<String> _photoIds = [];
 
-  File? _petImage;
+  final FirebasePetService _firebasePetService = FirebasePetService();
+  final FirebasePhotoService _firebasePhotoService = FirebasePhotoService();
 
-  Future pickImage() async {
+  Future pickImages() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final List<XFile>? images = await picker.pickMultiImage();
 
-    if (image != null) {
+    if (images != null) {
       setState(() {
-        _petImage = File(image.path);
-        _petImages.add(File(image.path));
+        _petImages = images.map((image) => File(image.path)).toList();
       });
     }
   }
 
-  Future uploadImage() async {
-    if (_petImage == null) return;
+  Future uploadImages(String petId) async {
+    for (var image in _petImages) {
+      // Generate a unique photo ID
+      String photoId = _firebasePhotoService.generateNewPhotoId();
+      final fileName = '${photoId}';
+      final path = 'uploads/$fileName';
 
-    final fileName = DateTime.now().millisecondsSinceEpoch.toString();
-    final path = 'uploads/$fileName';
+      // Upload to Supabase storage
+      final response = await Supabase.instance.client.storage
+          .from('pets')
+          .upload(path, image);
 
-    //upload to supabase storage
-    await Supabase.instance.client.storage
-        .from('pets')
-        .upload(path, _petImage!)
-        .then((value) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Image Uploaded Successfully!"))
-            );
-          }
-        });
+      if (response.isNotEmpty) {
+        final photoUrl = await Supabase.instance.client.storage
+            .from('pets')
+            .createSignedUrl(path, 2838240000); // 2838240000 is the expiration time in seconds (90 years)
+
+        // Add photo to Firestore and get the document ID
+        await _firebasePhotoService.addPhotoToFirestore(photoUrl, photoId);
+        _photoIds.add(photoId);
+      } else {
+        print('Error uploading image');
+      }
+    }
+  }
+
+  Future<void> submitPetDetails() async {
+    if (_formKey.currentState?.validate() ?? false) {
+      _formKey.currentState?.save();
+
+     
+      String petId = _firebasePetService.generateNewPetId();
+      await uploadImages(petId);
+
+      Pet pet = Pet(
+        pet_id: petId,
+        pet_name: _petNameController.text,
+        gender: _genderController.text,
+        photo_id: _photoIds, // List of photo document IDs
+        pet_status: PetStatus.Available,
+        birthdate: DateTime.parse(_birthdateController.text),
+        address: _addressController.text,
+        breed: _breedController.text,
+        acquisition_type: AcquisitionType.Surrendered,
+        description: _bioController.text,
+        species: _speciesController.text,
+        is_neutered_or_spayed: _isNeuteredOrSpayed,
+        vaccination_status: VaccinationStatus.values.firstWhere(
+          (e) => e.toString() == 'VaccinationStatus.' + _vaccinationStatusController.text,
+          orElse: () => VaccinationStatus.None,
+        ),
+      );
+
+      // Add the pet to the Firestore collection
+      await _firebasePetService.addPet(pet);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pet details submitted successfully')),
+      );
+    }
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != DateTime.now()) {
+      setState(() {
+        _birthdateController.text = picked.toIso8601String().split('T').first;
+      });
+    }
   }
 
   @override
@@ -77,73 +137,113 @@ class _SurrenderFormState extends State<SurrenderForm> {
               ),
               SizedBox(height: 20),
               TextFormField(
+                controller: _petNameController,
                 decoration: InputDecoration(
                   labelText: 'Pet Name',
                   border: OutlineInputBorder(),
                 ),
-                onSaved: (value) => _petName = value,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the pet name';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 10),
               TextFormField(
+                controller: _birthdateController,
                 decoration: InputDecoration(
                   labelText: 'Birthdate',
                   border: OutlineInputBorder(),
                 ),
-                onSaved: (value) => _birthdate = DateTime.tryParse(value ?? ''),
+                readOnly: true,
+                onTap: () => _selectDate(context),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the birthdate';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 10),
               TextFormField(
+                controller: _addressController,
                 decoration: InputDecoration(
                   labelText: 'Address',
                   border: OutlineInputBorder(),
                 ),
-                onSaved: (value) => _address = value,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the address';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 10),
               TextFormField(
+                controller: _bioController,
                 decoration: InputDecoration(
-                  labelText: 'Bio',
+                  labelText: 'Description',
                   border: OutlineInputBorder(),
                 ),
-                onSaved: (value) => _bio = value,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your pet\'s description.';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 10),
               TextFormField(
+                controller: _breedController,
                 decoration: InputDecoration(
                   labelText: 'Breed',
                   border: OutlineInputBorder(),
                 ),
-                onSaved: (value) => _breed = value,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the breed';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 10),
               TextFormField(
+                controller: _genderController,
                 decoration: InputDecoration(
                   labelText: 'Gender',
                   border: OutlineInputBorder(),
                 ),
-                onSaved: (value) => _gender = value,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the gender';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 10),
               TextFormField(
+                controller: _speciesController,
                 decoration: InputDecoration(
                   labelText: 'Species',
                   border: OutlineInputBorder(),
                 ),
-                onSaved: (value) => _species = value,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the species';
+                  }
+                  return null;
+                },
               ),
               SizedBox(height: 20),
               Text(
-                'Pet Image',
+                'Pet Images',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
               ElevatedButton(
-                onPressed: pickImage,
-                child: Text('Pick Image'),
-              ),
-              ElevatedButton(
-                onPressed: uploadImage,
-                child: Text('Upload'),
+                onPressed: pickImages,
+                child: Text('Pick Images'),
               ),
               SizedBox(height: 10),
               _petImages.isNotEmpty
@@ -159,7 +259,7 @@ class _SurrenderFormState extends State<SurrenderForm> {
               SizedBox(height: 20),
               SwitchListTile(
                 title: Text('Is Neutered or Spayed'),
-                value: _isNeuteredOrSpayed ?? false,
+                value: _isNeuteredOrSpayed,
                 onChanged: (value) {
                   setState(() {
                     _isNeuteredOrSpayed = value;
@@ -172,37 +272,21 @@ class _SurrenderFormState extends State<SurrenderForm> {
                   labelText: 'Vaccination Status',
                   border: OutlineInputBorder(),
                 ),
-                items: [
-                  'Not Vaccinated',
-                  'Partially Vaccinated',
-                  'Fully Vaccinated'
-                ]
-                    .map((status) => DropdownMenuItem(
-                          value: status,
-                          child: Text(status),
-                        ))
-                    .toList(),
-                onChanged: (value) => setState(() {
-                  _vaccinationStatus = value;
-                }),
-              ),
-              SizedBox(height: 10),
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Weight',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                onSaved: (value) => _weight = double.tryParse(value ?? ''),
+                items: VaccinationStatus.values.map((status) {
+                  return DropdownMenuItem(
+                    value: status.toString().split('.').last,
+                    child: Text(status.toString().split('.').last),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _vaccinationStatusController.text = value!;
+                  });
+                },
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    _formKey.currentState?.save();
-                    // Process the data
-                  }
-                },
+                onPressed: submitPetDetails,
                 child: Text('Submit'),
               ),
             ],
