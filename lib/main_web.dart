@@ -32,6 +32,11 @@ void main() async {
       anonKey: dotenv.env['SUPABASE_KEY']!,
     );
 
+    // Prohibit individual users login to website
+    if (dotenv.env['USER_TYPE'] != 'organization') {
+      throw Exception('Individual users are not allowed to log in to the website.');
+    }
+
     runApp(MyApp());
   } catch (e) {
     print('Error: $e');

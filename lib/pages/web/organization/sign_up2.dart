@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/services/firebase_organization_service.dart';
@@ -5,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/models/organization.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignUpForm2 extends StatefulWidget {
   final String username;
@@ -30,6 +33,27 @@ class _SignUpForm2State extends State<SignUpForm2> {
 
   final TextEditingController _orgNameController = TextEditingController();
   List<PlatformFile> _proofOfValidationFiles = [];
+
+  Future uploadDocuments() async {
+    if (_proofOfValidationFiles.isEmpty) return;
+
+    for (var file in _proofOfValidationFiles) {
+      final fileName = DateTime.now().millisecondsSinceEpoch.toString() + '_' + file.name;
+      final path = 'uploads/$fileName';
+
+      // Upload to Supabase storage
+      await Supabase.instance.client.storage
+          .from('organization_documents')
+          .upload(path, File(file.path!))
+          .then((value) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Document ${file.name} Uploaded Successfully!"))
+              );
+            }
+          });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +165,9 @@ class _SignUpForm2State extends State<SignUpForm2> {
                         isVerified: false,
                       );
                       await _firebaseOrganizationService.addOrganizationWithId(organization, orgId);
+
+                      // Upload documents to Supabase storage
+                      await uploadDocuments();
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('User created successfully')),
