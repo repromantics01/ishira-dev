@@ -1,12 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pawsmatch/firebase_options.dart';
 import 'package:pawsmatch/pages/web/home_page.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-//TODO: Prohibit individual users login to website
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,9 +32,7 @@ void main() async {
     );
 
     // Prohibit individual users login to website
-    if (dotenv.env['USER_TYPE'] != 'organization') {
-      throw Exception('Individual users are not allowed to log in to the website.');
-    }
+
 
     runApp(MyApp());
   } catch (e) {
@@ -45,12 +42,10 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PawsMatch',
+      title: 'PawsMatch Web',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -62,7 +57,7 @@ class MyApp extends StatelessWidget {
 class ErrorApp extends StatelessWidget {
   final String error;
 
-  const ErrorApp({super.key, required this.error});
+  const ErrorApp({required this.error});
 
   @override
   Widget build(BuildContext context) {

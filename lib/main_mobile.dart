@@ -37,11 +37,6 @@ Future<void> main() async {
       throw FileNotFoundError('.env file not found');
     }
 
-    // Print debug statements to verify execution
-    print('Loading environment variables...');
-    print('Supabase URL: ${dotenv.env['SUPABASE_URL']}');
-    print('Supabase Key: ${dotenv.env['SUPABASE_KEY']}');
-
     await Supabase.initialize(
       url: dotenv.env['SUPABASE_URL']!,
       anonKey: dotenv.env['SUPABASE_KEY']!,

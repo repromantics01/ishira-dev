@@ -135,3 +135,26 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Flutter/Dart related
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+.idea/
+.vscode/
+*.iml
+
+# Firebase related
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Environment variables
+.env
+
+# Vercel related
+.vercel/
+
+.vercel

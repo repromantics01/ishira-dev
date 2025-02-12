@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/pages/mobile/surrenderer/s_dashboard.dart';
 import 'package:pawsmatch/pages/mobile/adopter/a_dashboard.dart';
-import 'package:pawsmatch/pages/web/organization/sign_up.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/pages/mobile/user_registration_form.dart';
@@ -55,34 +54,32 @@ class _MobileHomepageState extends State<MobileHomepage> {
                 );
                 final uid = userCredential.user!.uid;
                 final Account account = await _auth.getAccount(uid);
-                if (account != null) {
-                  final profileSnapshot = await FirebaseFirestore.instance
-                      .collection('profile')
-                      .where('account_id', isEqualTo: account.account_id)
-                      .get();
+                final profileSnapshot = await FirebaseFirestore.instance
+                    .collection('profile')
+                    .where('account_id', isEqualTo: account.account_id)
+                    .get();
 
-                  if (profileSnapshot.docs.isNotEmpty) {
-                    final profileData = profileSnapshot.docs.first.data();
-                    final userType = profileData['user_type'];
+                if (profileSnapshot.docs.isNotEmpty) {
+                  final profileData = profileSnapshot.docs.first.data();
+                  final userType = profileData['user_type'];
 
-                    if (userType == 'Adopter') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AdopterDashboard(),
-                        ),
-                      );
-                    } else if (userType == 'Surrenderer') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SurrendererDashboard(),
-                        ),
-                      );
-                    }
+                  if (userType == 'Adopter') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AdopterDashboard(),
+                      ),
+                    );
+                  } else if (userType == 'Surrenderer') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SurrendererDashboard(),
+                      ),
+                    );
                   }
                 }
-              },
+                            },
               child: Text('Login'),
             ),
             SizedBox(height: 10),

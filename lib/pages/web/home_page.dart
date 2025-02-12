@@ -89,12 +89,17 @@ class _WebHomepageState extends State<WebHomepage> {
                           context,
                           MaterialPageRoute(builder: (context) => ModeratorDashboard()),
                         );
-                      } else {
+                      } else if (account.account_type == AccountType.OrgAdmin) {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (context) => OrganizationDashboard()),
                         );
                       }
+                        else if (account.account_type == AccountType.User) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Not an existing organization or moderator account')),
+                        );
+                        }
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Error logging in: $e')),

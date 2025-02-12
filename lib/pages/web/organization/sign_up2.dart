@@ -44,7 +44,7 @@ class _SignUpForm2State extends State<SignUpForm2> {
       // Upload to Supabase storage
       await Supabase.instance.client.storage
           .from('organization_documents')
-          .upload(path, File(file.path!))
+          .upload(path, File(file.path!), fileOptions: FileOptions(cacheControl: '3600', upsert: false))
           .then((value) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -56,7 +56,7 @@ class _SignUpForm2State extends State<SignUpForm2> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContextxcontext) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Organization Details'),

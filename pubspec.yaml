@@ -20,12 +20,16 @@ dependencies:
   supabase_flutter: ^2.8.3
   flutter_dotenv: ^5.0.2
   image_picker: ^1.1.2
-  
+  universal_io: ^2.2.2
+  universal_html: ^2.2.4
+  # Add any other dependencies here
+  # Ensure they are compatible with both web and mobile platforms 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  # Add any other dev dependencies here
 
 flutter:
   uses-material-design: true
