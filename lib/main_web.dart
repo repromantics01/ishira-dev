@@ -20,13 +20,9 @@ void main() async {
       persistenceEnabled: true,
     );
 
-    // Load the .env file
-    print('Loading environment variables...');
+
     await dotenv.load(fileName: ".env");
 
-    // Print debug statements to verify execution
-    print('Supabase URL: ${dotenv.env['SUPABASE_URL']}');
-    print('Supabase Key: ${dotenv.env['SUPABASE_KEY']}');
 
     await Supabase.initialize(
       url: dotenv.env['SUPABASE_URL']!,
