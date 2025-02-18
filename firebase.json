@@ -21,5 +21,21 @@
         }
       }
     }
+  },
+  "hosting": {
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "redirects":[
+      {
+        "source" : "lib/main.dart" 
+      }
+    ],
+    "frameworksBackend": {
+      "region": "asia-east1"
+    }
   }
 }

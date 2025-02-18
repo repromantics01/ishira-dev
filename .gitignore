@@ -153,8 +153,3 @@ ios/Runner/GoogleService-Info.plist
 
 # Environment variables
 .env
-
-# Vercel related
-.vercel/
-
-.vercel

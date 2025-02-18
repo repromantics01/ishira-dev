@@ -10,19 +10,21 @@ import 'package:pawsmatch/pages/web/home_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
+    print('Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    print('Firebase initialized successfully.');
 
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
     );
 
     // Load the .env file
+    print('Loading environment variables...');
     await dotenv.load(fileName: ".env");
 
     // Print debug statements to verify execution
-    print('Loading environment variables...');
     print('Supabase URL: ${dotenv.env['SUPABASE_URL']}');
     print('Supabase Key: ${dotenv.env['SUPABASE_KEY']}');
 
@@ -30,13 +32,11 @@ void main() async {
       url: dotenv.env['SUPABASE_URL']!,
       anonKey: dotenv.env['SUPABASE_KEY']!,
     );
-
-    // Prohibit individual users login to website
-
+    print('Supabase initialized successfully.');
 
     runApp(MyApp());
   } catch (e) {
-    print('Error: $e');
+    print('Error during initialization: $e');
     runApp(ErrorApp(error: e.toString()));
   }
 }

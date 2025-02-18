@@ -1,5 +1,21 @@
 {
   "projects": {
     "default": "pawsmatch-c5390"
+  },
+  "targets": {
+    "pawsmatch-c5390": {
+      "hosting": {
+        "site": "pawsmatch",
+        "previews": {
+          "enabled": true,
+          "branches": [
+            "main",
+            "development",
+            "feature/*",
+            "setup-github-actions"
+          ]
+        }
+      }
+    }
   }
 }
