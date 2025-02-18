@@ -29,9 +29,11 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "redirects":[
+    "redirects": [
       {
-        "source" : "lib/main.dart" 
+        "source": "/lib/main.dart",
+        "destination": "/index.html",
+        "type": 301
       }
     ],
     "frameworksBackend": {
