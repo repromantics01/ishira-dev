@@ -52,7 +52,7 @@ jobs:
         FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PAWSMATCH_C5390 }}
       run: |
         echo "$FIREBASE_SERVICE_ACCOUNT" > "${HOME}/firebase-key.json"
-        firebase auth:login --no-localhost --token "$(jq -r '.token' ${HOME}/firebase-key.json)"
+        firebase auth:activate-service-account --key-file="${HOME}/firebase-key.json"
         firebase use --project "$(jq -r '.project_id' ${HOME}/firebase-key.json)"
   
     - name: Deploy to Firebase Hosting
