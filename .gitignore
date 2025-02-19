@@ -36,6 +36,11 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 .build/
+node_modules/
+.dart_tool/
+.firebase/
+generated_plugins/
+canvaskit/*
 
 # Symbolication related
 app.*.symbols
@@ -153,3 +158,10 @@ ios/Runner/GoogleService-Info.plist
 
 # Environment variables
 .env
+
+# Firebase and Hosting
+.firebase/
+.firebase/*.cache
+.firebase-debug.log
+firebase-debug.log
+hosting/

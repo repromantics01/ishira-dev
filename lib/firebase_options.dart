@@ -6,14 +6,6 @@ import 'package:flutter/foundation.dart'
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -40,55 +32,54 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDDgXwNr_AD4ez4xXlIAnUCL0BdqOPJ2dA',
-    appId: '1:572309199876:web:319ca6fe9872a5d1d6a951',
-    messagingSenderId: '572309199876',
-    projectId: 'pawsmatch-c5390',
-    authDomain: 'pawsmatch-c5390.firebaseapp.com',
-    databaseURL: 'https://pawsmatch-c5390-default-rtdb.firebaseio.com',
-    storageBucket: 'pawsmatch-c5390.firebasestorage.app',
-    measurementId: 'G-RZ3PEXMPTY',
+  static FirebaseOptions web = FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID_WEB'),
+    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    authDomain: const String.fromEnvironment('FIREBASE_AUTH_DOMAIN'),
+    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
+    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+    measurementId: const String.fromEnvironment('FIREBASE_MEASUREMENT_ID'),
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBOJcTqEMKRTC95Va-4xw7uupYhy4DmHpc',
-    appId: '1:572309199876:android:60adf561a8d26d9bd6a951',
-    messagingSenderId: '572309199876',
-    projectId: 'pawsmatch-c5390',
-    databaseURL: 'https://pawsmatch-c5390-default-rtdb.firebaseio.com',
-    storageBucket: 'pawsmatch-c5390.firebasestorage.app',
+  static FirebaseOptions android = FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID_ANDROID'),
+    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
+    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCQJcNbNLHfceMcuPfAHOnUutPrEcZFp38',
-    appId: '1:572309199876:ios:37ecd9fd42964182d6a951',
-    messagingSenderId: '572309199876',
-    projectId: 'pawsmatch-c5390',
-    databaseURL: 'https://pawsmatch-c5390-default-rtdb.firebaseio.com',
-    storageBucket: 'pawsmatch-c5390.firebasestorage.app',
-    iosBundleId: 'com.example.pawsmatch',
+  static FirebaseOptions ios = FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID_IOS'),
+    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
+    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+    iosBundleId: const String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID'),
   );
 
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCQJcNbNLHfceMcuPfAHOnUutPrEcZFp38',
-    appId: '1:572309199876:ios:37ecd9fd42964182d6a951',
-    messagingSenderId: '572309199876',
-    projectId: 'pawsmatch-c5390',
-    databaseURL: 'https://pawsmatch-c5390-default-rtdb.firebaseio.com',
-    storageBucket: 'pawsmatch-c5390.firebasestorage.app',
-    iosBundleId: 'com.example.pawsmatch',
+  static FirebaseOptions macos = FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID_MACOS'),
+    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
+    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+    iosBundleId: const String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID'),
   );
 
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDDgXwNr_AD4ez4xXlIAnUCL0BdqOPJ2dA',
-    appId: '1:572309199876:web:eab60fe59967ec44d6a951',
-    messagingSenderId: '572309199876',
-    projectId: 'pawsmatch-c5390',
-    authDomain: 'pawsmatch-c5390.firebaseapp.com',
-    databaseURL: 'https://pawsmatch-c5390-default-rtdb.firebaseio.com',
-    storageBucket: 'pawsmatch-c5390.firebasestorage.app',
-    measurementId: 'G-CF9G12PZVD',
+  static FirebaseOptions windows = FirebaseOptions(
+    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
+    appId: const String.fromEnvironment('FIREBASE_APP_ID_WINDOWS'),
+    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
+    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    authDomain: const String.fromEnvironment('FIREBASE_AUTH_DOMAIN'),
+    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
+    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+    measurementId: const String.fromEnvironment('FIREBASE_MEASUREMENT_ID'),
   );
-
 }
