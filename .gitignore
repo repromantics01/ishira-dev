@@ -41,6 +41,7 @@ node_modules/
 .firebase/
 generated_plugins/
 canvaskit/*
+sa.json
 
 # Symbolication related
 app.*.symbols

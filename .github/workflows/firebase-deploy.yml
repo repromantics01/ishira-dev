@@ -39,8 +39,9 @@ jobs:
         --dart-define=FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }} \
         --dart-define=FIREBASE_MEASUREMENT_ID=${{ secrets.FIREBASE_MEASUREMENT_ID }} \
         --dart-define=FIREBASE_IOS_BUNDLE_ID=${{ secrets.FIREBASE_IOS_BUNDLE_ID }} \
+        --dart-define=FIREBASE_TOKEN=${{ secrets.FIREBASE_TOKEN }} \
         --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
-        --dart-define=SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+        --dart-define=SUPABASE_KEY=${{ secrets.SUPABASE_KEY }} 
 
     - name: Set up Firebase CLI
       run: |
@@ -52,9 +53,13 @@ jobs:
         FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PAWSMATCH_C5390 }}
       run: |
         echo "$FIREBASE_SERVICE_ACCOUNT" > "${HOME}/firebase-key.json"
-        export GOOGLE_APPLICATION_CREDENTIALS="${HOME}/firebase-key.json"
-        firebase functions:config:set service_account="$(cat ${HOME}/firebase-key.json)"
+        firebase auth:activate-service-account --key-file="${HOME}/firebase-key.json"
         firebase use --project "$(jq -r '.project_id' ${HOME}/firebase-key.json)"
-  
+
+    - name: Set up Google Cloud credentials
+      env:
+        GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      run: echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > $GITHUB_WORKSPACE/sa.json
+
     - name: Deploy to Firebase Hosting
       run: firebase deploy --only hosting --token "$(jq -r '.token' ${HOME}/firebase-key.json)"
