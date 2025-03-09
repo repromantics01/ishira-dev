@@ -5,7 +5,5 @@
   "redirects": [
     { "source": "/index.html", "destination": "/", "statusCode": 301 }
   ],
-  "installCommand": "chmod +x ./scripts/setup-flutter.sh && ./scripts/setup-flutter.sh",
-  "buildCommand": "export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter pub get && flutter build web --target=lib/main_web.dart --release",
   "outputDirectory": "build/web"
 }

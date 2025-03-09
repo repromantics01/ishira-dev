@@ -29,8 +29,6 @@ jobs:
         run: npm install -g vercel
 
       - name: Deploy to Vercel
-        env:
-          GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
         run: >
           vercel --prod --yes 
           --token ${{ secrets.VERCEL_TOKEN }}
