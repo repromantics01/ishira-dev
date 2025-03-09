@@ -10,6 +10,11 @@ import 'package:pawsmatch/pages/web/home_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
+    print('Loading environment variables...');
+    await dotenv.load(fileName: ".env");
+    print("API Key: ${dotenv.env['FIREBASE_API_KEY']}");
+    print("App ID: ${dotenv.env['FIREBASE_APP_ID_WEB']}");
+
     print('Initializing Firebase...');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -19,10 +24,6 @@ void main() async {
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
     );
-
-
-    await dotenv.load(fileName: ".env");
-
 
     await Supabase.initialize(
       url: dotenv.env['SUPABASE_URL']!,

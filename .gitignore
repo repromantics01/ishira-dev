@@ -168,3 +168,4 @@ ios/Runner/GoogleService-Info.plist
 firebase-debug.log
 hosting/
 .vercel
+.env*.local

@@ -3,6 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -33,53 +34,57 @@ class DefaultFirebaseOptions {
   }
 
   static FirebaseOptions web = FirebaseOptions(
-    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
-    appId: const String.fromEnvironment('FIREBASE_APP_ID_WEB'),
-    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
-    authDomain: const String.fromEnvironment('FIREBASE_AUTH_DOMAIN'),
-    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
-    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
-    measurementId: const String.fromEnvironment('FIREBASE_MEASUREMENT_ID'),
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_WEB']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
+    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
+    measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID']!,
   );
 
   static FirebaseOptions android = FirebaseOptions(
-    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
-    appId: const String.fromEnvironment('FIREBASE_APP_ID_ANDROID'),
-    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
-    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
-    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_ANDROID']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
+    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
+    measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID']!,
   );
 
   static FirebaseOptions ios = FirebaseOptions(
-    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
-    appId: const String.fromEnvironment('FIREBASE_APP_ID_IOS'),
-    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
-    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
-    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
-    iosBundleId: const String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID'),
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_IOS']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
+    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
+    iosBundleId: dotenv.env['FIREBASE_IOS_BUNDLE_ID']!,
   );
 
   static FirebaseOptions macos = FirebaseOptions(
-    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
-    appId: const String.fromEnvironment('FIREBASE_APP_ID_MACOS'),
-    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
-    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
-    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
-    iosBundleId: const String.fromEnvironment('FIREBASE_IOS_BUNDLE_ID'),
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_MACOS']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
+    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
+    iosBundleId: dotenv.env['FIREBASE_IOS_BUNDLE_ID']!,
   );
 
   static FirebaseOptions windows = FirebaseOptions(
-    apiKey: const String.fromEnvironment('FIREBASE_API_KEY'),
-    appId: const String.fromEnvironment('FIREBASE_APP_ID_WINDOWS'),
-    messagingSenderId: const String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
-    projectId: const String.fromEnvironment('FIREBASE_PROJECT_ID'),
-    authDomain: const String.fromEnvironment('FIREBASE_AUTH_DOMAIN'),
-    databaseURL: const String.fromEnvironment('FIREBASE_DATABASE_URL'),
-    storageBucket: const String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
-    measurementId: const String.fromEnvironment('FIREBASE_MEASUREMENT_ID'),
+    apiKey: dotenv.env['FIREBASE_API_KEY']!,
+    appId: dotenv.env['FIREBASE_APP_ID_WINDOWS']!,
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
+    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
+    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
+    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
+    measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID']!,
   );
 }

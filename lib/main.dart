@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'package:pawsmatch/main_mobile.dart' as mobile;
 import 'package:pawsmatch/main_web.dart' as web;
@@ -8,6 +9,7 @@ import 'package:pawsmatch/main_web.dart' as web;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
+    await dotenv.load();
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
