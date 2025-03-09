@@ -1,4 +1,14 @@
-@echo off
+#!/bin/bash
+
+# Install Flutter if not installed
+if ! command -v flutter &> /dev/null
+then
+    echo "Flutter is not installed. Installing now..."
+    git clone https://github.com/flutter/flutter.git -b stable
+    export PATH="$PATH:$(pwd)/flutter/bin"
+    flutter doctor
+fi
+
 flutter build web --target=lib/main_web.dart ^
   --dart-define=NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY \
   --dart-define=NEXT_PUBLIC_FIREBASE_APP_ID_WEB=$NEXT_PUBLIC_FIREBASE_APP_ID_WEB \
