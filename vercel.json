@@ -5,7 +5,7 @@
   "redirects": [
     { "source": "/index.html", "destination": "/", "statusCode": 301 }
   ],
-  "buildCommand": "flutter pub get && flutter build web --target=lib/main_web.dart",
-  "outputDirectory": "build/web",
-  "installCommand": "git clone https://github.com/flutter/flutter.git -b stable && export PATH=\"$PATH:$PWD/flutter/bin\" && flutter doctor"
+  "installCommand": "git clone https://github.com/flutter/flutter.git && export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter precache && flutter doctor",
+  "buildCommand": "export PATH=\"$PATH:`pwd`/flutter/bin\" && flutter pub get && flutter build web --target=lib/main_web.dart",
+  "outputDirectory": "build/web"
 }
