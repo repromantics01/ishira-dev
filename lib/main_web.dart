@@ -6,18 +6,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pawsmatch/firebase_options.dart';
 import 'package:pawsmatch/pages/web/home_page.dart';
+import 'dart:js' as js;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     print('Loading environment variables...');
-    await dotenv.load(fileName: ".env");
-    print("API Key: ${dotenv.env['FIREBASE_API_KEY']}");
-    print("App ID: ${dotenv.env['FIREBASE_APP_ID_WEB']}");
+    
+    final firebaseConfig = js.context['firebaseConfig'];
+    final supabaseConfig = js.context['supabaseConfig'];
 
     print('Initializing Firebase...');
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+      options: FirebaseOptions(
+        apiKey: firebaseConfig['apiKey'],
+        appId: firebaseConfig['appId'],
+        messagingSenderId: firebaseConfig['messagingSenderId'],
+        projectId: firebaseConfig['projectId'],
+        authDomain: firebaseConfig['authDomain'],
+        databaseURL: firebaseConfig['databaseURL'],
+        storageBucket: firebaseConfig['storageBucket'],
+        measurementId: firebaseConfig['measurementId'],
+      ),
     );
     print('Firebase initialized successfully.');
 
@@ -26,8 +36,8 @@ void main() async {
     );
 
     await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL']!,
-      anonKey: dotenv.env['SUPABASE_KEY']!,
+      url: supabaseConfig['url'],
+      anonKey: supabaseConfig['key'],
     );
     print('Supabase initialized successfully.');
 
