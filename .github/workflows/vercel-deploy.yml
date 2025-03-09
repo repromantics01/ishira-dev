@@ -30,7 +30,7 @@ jobs:
 
       - name: Deploy to Vercel
         run: >
-          vercel --prod --yes --cwd .
+          vercel --prod --yes 
           --token ${{ secrets.VERCEL_TOKEN }}
           --env FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
           --env FIREBASE_APP_ID_WEB=${{ secrets.FIREBASE_APP_ID_WEB }}
