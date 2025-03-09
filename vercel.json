@@ -1,6 +1,4 @@
 {
-  "framework": "static",
-  "buildCommand": "flutter build web --target=lib/main_web.dart --release",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
