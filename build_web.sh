@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 # Install Flutter if not installed
 if ! command -v flutter &> /dev/null
 then
@@ -9,7 +10,7 @@ then
     flutter doctor
 fi
 
-flutter build web --target=lib/main_web.dart ^
+flutter build web --target=lib/main_web.dart \
   --dart-define=NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY \
   --dart-define=NEXT_PUBLIC_FIREBASE_APP_ID_WEB=$NEXT_PUBLIC_FIREBASE_APP_ID_WEB \
   --dart-define=NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID \
@@ -23,3 +24,5 @@ flutter build web --target=lib/main_web.dart ^
   --dart-define=NEXT_PUBLIC_SUPABASE_KEY=$NEXT_PUBLIC_SUPABASE_KEY \
   --dart-define=NEXT_PUBLIC_GOOGLE_APPLICATION_CREDENTIALS=$NEXT_PUBLIC_GOOGLE_APPLICATION_CREDENTIALS \
   --dart-define=NEXT_FIREBASE_TOKEN=$NEXT_PUBLIC_FIREBASE_TOKEN 
+
+echo "Build completed successfully. Output directory: build/web"
