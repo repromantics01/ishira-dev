@@ -1,0 +1,172 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.env
+.svn/
+.swiftpm/
+.swift
+.cmake
+.stamp
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+.build/
+node_modules/
+.dart_tool/
+.firebase/
+generated_plugins/
+canvaskit/*
+sa.json
+.vercel
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# VS Code
+.vscode/
+
+# Android
+.gradle/
+.idea/
+.vscode/
+android/.gradle/
+android/app/build/
+android/local.properties
+android/.idea/
+android/.vscode/
+
+# iOS
+ios/Flutter/.last_build_id
+ios/Pods
+ios/.symlinks
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/ServiceDefinitions.json
+ios/Runner.xcworkspace
+ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+ios/Runner.xcworkspace/xcuserdata
+
+# macOS
+macos/Flutter/ephemeral/
+macos/Flutter/Flutter.podspec
+macos/Flutter/Flutter.framework
+macos/Flutter/Flutter.podspec
+macos/Flutter/Flutter.xcworkspace
+macos/Flutter/Flutter.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+macos/Flutter/Flutter.xcworkspace/xcuserdata
+
+# Linux
+linux/flutter/ephemeral/
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
+
+# Ignore generated plugin files
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.framework
+ios/Flutter/app.podspec
+ios/Runner/GeneratedPluginRegistrant.*
+
+# Other common ignores
+*.hprof
+*.lock
+*.sublime-workspace
+*.sublime-project
+flutter/ephemeral/
+
+# Visual Studio user-specific files.
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio build-related files.
+x64/
+x86/
+
+# Visual Studio cache files
+# files ending in .cache can be ignored
+*.[Cc]ache
+# but keep track of directories ending in .cache
+!*.[Cc]ache/
+
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+.packages
+/build/
+flutter_*.png
+.plugin_symlinks/
+.cmake/
+.swift/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Flutter/Dart related
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+.idea/
+.vscode/
+*.iml
+
+# Firebase related
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Environment variables
+.env
+
+# Firebase and Hosting
+.firebase/
+.firebase/*.cache
+.firebase-debug.log
+firebase-debug.log
+hosting/
+.vercel
+.env*.local
+.env.local

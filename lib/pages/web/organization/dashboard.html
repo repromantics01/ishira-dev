@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organization Dashboard - PawsMatch</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f7f8fa;
+        }
+
+        .container {
+            display: flex;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #3498db;
+            color: white;
+            padding: 15px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .header .logout {
+            background-color: #e74c3c;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            height: 100vh;
+            position: fixed;
+            top: 60px;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .sidebar h2 {
+            font-size: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .sidebar a {
+            color: white;
+            text-decoration: none;
+            margin: 15px 0;
+            display: block;
+            font-size: 16px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .sidebar a:hover {
+            background-color: #34495e;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 80px 20px 20px 20px;
+            flex-grow: 1;
+        }
+
+        .section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th, .table td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .table th {
+            background-color: #f4f4f4;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background-color: #2980b9;
+        }
+
+        .stats-overview {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            background-color: #3498db;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+            margin: 0 10px;
+        }
+
+        .recent-activities, .quick-actions {
+            margin-bottom: 20px;
+        }
+
+        .recent-activities ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .recent-activities li {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PawsMatch Dashboard</h1>
+        <button class="logout">Logout</button>
+    </div>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>PawsMatch</h2>
+            <a href="#dashboard">Dashboard</a>
+            <a href="#manage-pets">Manage Pets</a>
+            <a href="#surrender-requests">Surrender Requests</a>
+            <a href="#adoption-requests">Adoption Requests</a>
+            <a href="#messages">Messages</a>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard Section -->
+            <div id="dashboard" class="section">
+                <h3>Dashboard</h3>
+                <p>Welcome back, [Organization Name]! Here is a quick overview of your activity:</p>
+                <ul>
+                    <li>Active Pets: 12</li>
+                    <li>Pending Surrender Requests: 5</li>
+                    <li>Pending Adoption Requests: 3</li>
+                </ul>
+            </div>
+
+            <!-- Manage Pets Section -->
+            <div id="manage-pets" class="section">
+                <h3>Manage Pets</h3>
+                <p>View and manage all pets listed for adoption.</p>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Breed</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Buddy</td>
+                            <td>Golden Retriever</td>
+                            <td>Available</td>
+                            <td><button class="btn">Edit</button> <button class="btn">Remove</button></td>
+                        </tr>
+                        <tr>
+                            <td>Mittens</td>
+                            <td>Siberian Cat</td>
+                            <td>Adopted</td>
+                            <td><button class="btn">Edit</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Surrender Requests Section -->
+            <div id="surrender-requests" class="section">
+                <h3>Surrender Requests</h3>
+                <p>Review and respond to surrender requests from users.</p>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Pet</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Jane Doe</td>
+                            <td>German Shepherd</td>
+                            <td>Pending</td>
+                            <td><button class="btn">Approve</button> <button class="btn">Reject</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Adoption Requests Section -->
+            <div id="adoption-requests" class="section">
+                <h3>Adoption Requests</h3>
+                <p>Manage adoption requests from users.</p>
+                <table class="table">
+                    <thead>
+                            <td>John Smith</td>
+                        <tr>
+                            <th>User</th>
+                            <th>Pet</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>John Smith</td>
+                            <td>Buddy</td>
+                            <td>Pending</td>
+                            <td><button class="btn">Approve</button> <button class="btn">Reject</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Messages Section -->
+            <div id="messages" class="section">
+                <h3>Messages</h3>
+                <p>Check messages and inquiries from users.</p>
+                <ul>
+                    <li><strong>Jane Doe:</strong> Can I surrender two dogs?</li>
+                    <li><strong>John Smith:</strong> I'm interested in adopting Buddy.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+                            <td>Buddy</td>
+                            <td>Pending</td>
+                            <td><button class="btn">Approve</button> <button class="btn">Reject</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Messages Section -->
+            <div id="messages" class="section">
+                <h3>Messages</h3>
+                <p>Check messages and inquiries from users.</p>
+                <ul>
+                    <li><strong>Jane Doe:</strong> Can I surrender two dogs?</li>
+                    <li><strong>John Smith:</strong> I'm interested in adopting Buddy.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
