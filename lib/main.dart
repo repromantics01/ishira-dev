@@ -3,25 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
-import 'package:pawsmatch/main_mobile.dart' as mobile;
-import 'package:pawsmatch/main_web.dart' as web;
+
+// Replace any direct import of main_web.dart with this conditional import approach
+import 'main_stub.dart'
+    if (dart.library.html) 'main_web.dart'
+    if (dart.library.io) 'main_mobile.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await dotenv.load();
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    print('Firebase initialized successfully');
-  } catch (e) {
-    print('Error initializing Firebase: $e');
-  }
-  if (kIsWeb) {
-    // Run the web version
-    web.main();
-  } else {
-    // Run the mobile version
-    mobile.main();
-  }
+  
+  // Initialize Firebase and other services based on platform
+  await initializeApp(); // This function will be defined in platform-specific files
+  
+  runApp(MyApp());
 }

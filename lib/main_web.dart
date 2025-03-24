@@ -7,26 +7,20 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pawsmatch/firebase_options.dart';
 import 'package:pawsmatch/pages/web/home_page.dart';
 import 'dart:js' as js;
+import 'dart:js_util' as js_util;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     print('Loading environment variables...');
     
-    final firebaseConfig = js.context['firebaseConfig'];
-    final supabaseConfig = js.context['supabaseConfig'];
+    final firebaseConfig = js_util.getProperty(js_util.globalThis, 'firebaseConfig');
+    final supabaseConfig = js_util.getProperty(js_util.globalThis, 'supabaseConfig');
 
     print('Initializing Firebase...');
     await Firebase.initializeApp(
-      options: FirebaseOptions(
-        apiKey: firebaseConfig['apiKey'],
-        appId: firebaseConfig['appId'],
-        messagingSenderId: firebaseConfig['messagingSenderId'],
-        projectId: firebaseConfig['projectId'],
-        authDomain: firebaseConfig['authDomain'],
-        databaseURL: firebaseConfig['databaseURL'],
-        storageBucket: firebaseConfig['storageBucket'],
-        measurementId: firebaseConfig['measurementId'],
+      options: FirebaseOptions.fromMap(
+        _convertToMap(firebaseConfig)
       ),
     );
     print('Firebase initialized successfully.');
@@ -46,6 +40,13 @@ void main() async {
     print('Error during initialization: $e');
     runApp(ErrorApp(error: e.toString()));
   }
+}
+
+// Helper to convert JS object to Dart map
+Map<String, dynamic> _convertToMap(dynamic jsObject) {
+  // Implementation depends on your JS object structure
+  // Basic conversion using js_util
+  return Map<String, dynamic>.from(js_util.dartify(jsObject));
 }
 
 class MyApp extends StatelessWidget {
