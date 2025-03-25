@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:pawsmatch/firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-// Import platform-specific implementations
-import 'dart:core';
-
-// Platform-specific implementations
+// Direct imports for platform-specific code
+import 'package:pawsmatch/main_mobile.dart' as mobile;
+// import 'package:pawsmatch/main_web.dart' as web; // Uncomment when available
 import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
 import 'package:pawsmatch/pages/web/web_login.dart';
 
@@ -17,12 +16,6 @@ void main() async {
   runApp(LoadingApp());
   
   try {
-    // Initialize Firebase with the correct options
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    print("Firebase initialized successfully");
-    
     // Load environment variables if needed
     if (!kIsWeb) {
       try {
@@ -34,14 +27,22 @@ void main() async {
       }
     }
     
-    // Call platform-specific initialization
-    await initPlatformSpecific();
+    // Initialize Firebase ONCE with the correct options
+    await Firebase.initializeApp(
+      name: 'PawsMatch',
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("Firebase initialized successfully");
     
-    // Run the appropriate app based on platform
+    // Call platform-specific initialization
     if (kIsWeb) {
       print("Starting web app");
+      // Uncomment when web implementation is ready
+      // await web.initializeWebPlatform();
       runApp(const WebApp());
     } else {
+      print("Starting mobile platform initialization");
+      await mobile.initializeMobilePlatform();
       print("Starting mobile app");
       runApp(const MobileApp());
     }
@@ -49,17 +50,6 @@ void main() async {
     print("Initialization error: $e");
     print("Stack trace: $stack");
     runApp(ErrorApp(error: e.toString()));
-  }
-}
-
-// Call platform-specific initialization from either main_web.dart or main_mobile.dart
-Future<void> initPlatformSpecific() async {
-  if (kIsWeb) {
-    // Import web-specific initialization
-    await import('package:pawsmatch/main_web.dart');
-  } else {
-    // Import mobile-specific initialization
-    await import('package:pawsmatch/main_mobile.dart');
   }
 }
 
@@ -116,12 +106,6 @@ class ErrorApp extends StatelessWidget {
       ),
     );
   }
-}
-
-dynamic import(String path) async {
-  // This is a stub for the dynamic import functionality
-  print("Importing: $path");
-  return null;
 }
 
 // Mobile app class

@@ -1,37 +1,61 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:pawsmatch/firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io';
 
 // Called from main.dart
-Future<void> initializeApp() async {
+Future<void> initializeMobilePlatform() async {
   print("Mobile platform initialization");
   
-  // Configure Firestore settings
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-  );
-  
-  // Initialize Supabase if credentials are available
   try {
-    String? supabaseUrl = dotenv.env['SUPABASE_URL'];
-    String? supabaseKey = dotenv.env['SUPABASE_KEY'];
+    // Configure Firestore settings
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+    );
     
-    if (supabaseUrl != null && supabaseKey != null) {
-      await Supabase.initialize(
-        url: supabaseUrl,
-        anonKey: supabaseKey,
-      );
-      print("Supabase initialized successfully");
-    } else {
-      print("Skipping Supabase initialization - missing credentials");
+    // Initialize Supabase if credentials are available
+    try {
+      String? supabaseUrl = dotenv.env['SUPABASE_URL'];
+      String? supabaseKey = dotenv.env['SUPABASE_KEY'];
+      
+      if (supabaseUrl != null && supabaseKey != null) {
+        await Supabase.initialize(
+          url: supabaseUrl,
+          anonKey: supabaseKey,
+        );
+        print("Supabase initialized successfully");
+      } else {
+        print("Skipping Supabase initialization - missing credentials");
+      }
+    } catch (e) {
+      print('Warning: Supabase initialization error: $e');
+      // Continue without Supabase
     }
   } catch (e) {
-    print('Warning: Supabase initialization error: $e');
-    // Continue without Supabase
+    print('Mobile initialization error: $e');
+    throw Exception('Failed to initialize mobile platform: $e');
+  }
+}
+
+// For backward compatibility
+Future<void> initializeApp() async {
+  await initializeMobilePlatform();
+}
+
+class MyMobileApp extends StatelessWidget {
+  const MyMobileApp({Key? key}) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'PawsMatch',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: MobileHomepage(),
+    );
   }
 }
 
@@ -56,10 +80,7 @@ class ErrorApp extends StatelessWidget {
   }
 }
 
-// Error handling class
-class FileNotFoundError implements Exception {
-  final String message;
-  FileNotFoundError(this.message);
-  @override
-  String toString() => 'FileNotFoundError: $message';
+void handleInitError(dynamic error) {
+  print('Error during initialization: $error');
+  runApp(ErrorApp(error: error.toString()));
 }

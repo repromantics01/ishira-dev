@@ -11,7 +11,7 @@
 .env
 .svn/
 .swiftpm/
-.swift
+.swift  
 .cmake
 .stamp
 migrate_working_dir/
@@ -21,7 +21,6 @@ migrate_working_dir/
 *.ipr
 *.iws
 .idea/
-MainActivity.kt
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
@@ -100,7 +99,6 @@ ios/Flutter/app.framework
 ios/Flutter/app.podspec
 ios/Runner/GeneratedPluginRegistrant.*
 **/generated_plugin_registrant.dart
-/lib/generated_plugin_registrant.dart
 
 # Other common ignores
 *.hprof
