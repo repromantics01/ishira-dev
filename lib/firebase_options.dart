@@ -3,10 +3,8 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
-///
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -33,58 +31,53 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static FirebaseOptions web = FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY']!,
-    appId: dotenv.env['FIREBASE_APP_ID_WEB']!,
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
-    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-    measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID']!,
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: "AIzaSyDDgXwNr_AD4ez4xXlIAnUCL0BdqOPJ2dA",
+    appId: "1:572309199876:web:319ca6fe9872a5d1d6a951",
+    messagingSenderId: "572309199876",
+    projectId: "pawsmatch-c5390",
+    authDomain: "pawsmatch-c5390.firebaseapp.com",
+    databaseURL: "https://pawsmatch-c5390-default-rtdb.firebaseio.com",
+    storageBucket: "pawsmatch-c5390.firebasestorage.app",
+    measurementId: "G-RZ3PEXMPTY",
   );
 
-  static FirebaseOptions android = FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY']!,
-    appId: dotenv.env['FIREBASE_APP_ID_ANDROID']!,
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
-    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-    measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID']!,
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: "AIzaSyDDgXwNr_AD4ez4xXlIAnUCL0BdqOPJ2dA",
+    appId: "1:572309199876:android:60adf561a8d26d9bd6a951",
+    messagingSenderId: "572309199876",
+    projectId: "pawsmatch-c5390",
+    databaseURL: "https://pawsmatch-c5390-default-rtdb.firebaseio.com",
+    storageBucket: "pawsmatch-c5390.firebasestorage.app",
   );
 
-  static FirebaseOptions ios = FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY']!,
-    appId: dotenv.env['FIREBASE_APP_ID_IOS']!,
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
-    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-    iosBundleId: dotenv.env['FIREBASE_IOS_BUNDLE_ID']!,
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: "AIzaSyDDgXwNr_AD4ez4xXlIAnUCL0BdqOPJ2dA",
+    appId: "1:572309199876:ios:37ecd9fd42964182d6a951",
+    messagingSenderId: "572309199876",
+    projectId: "pawsmatch-c5390",
+    databaseURL: "https://pawsmatch-c5390-default-rtdb.firebaseio.com",
+    storageBucket: "pawsmatch-c5390.firebasestorage.app",
+    iosBundleId: "com.example.pawsmatch",
   );
 
-  static FirebaseOptions macos = FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY']!,
-    appId: dotenv.env['FIREBASE_APP_ID_MACOS']!,
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
-    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-    iosBundleId: dotenv.env['FIREBASE_IOS_BUNDLE_ID']!,
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: "AIzaSyDDgXwNr_AD4ez4xXlIAnUCL0BdqOPJ2dA",
+    appId: "1:572309199876:ios:37ecd9fd42964182d6a951",
+    messagingSenderId: "572309199876",
+    projectId: "pawsmatch-c5390",
+    databaseURL: "https://pawsmatch-c5390-default-rtdb.firebaseio.com",
+    storageBucket: "pawsmatch-c5390.firebasestorage.app",
+    iosBundleId: "com.example.pawsmatch",
   );
 
-  static FirebaseOptions windows = FirebaseOptions(
-    apiKey: dotenv.env['FIREBASE_API_KEY']!,
-    appId: dotenv.env['FIREBASE_APP_ID_WINDOWS']!,
-    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID']!,
-    projectId: dotenv.env['FIREBASE_PROJECT_ID']!,
-    authDomain: dotenv.env['FIREBASE_AUTH_DOMAIN']!,
-    databaseURL: dotenv.env['FIREBASE_DATABASE_URL']!,
-    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET']!,
-    measurementId: dotenv.env['FIREBASE_MEASUREMENT_ID']!,
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: "AIzaSyDDgXwNr_AD4ez4xXlIAnUCL0BdqOPJ2dA",
+    appId: "1:572309199876:web:eab60fe59967ec44d6a951",
+    messagingSenderId: "572309199876",
+    projectId: "pawsmatch-c5390",
+    databaseURL: "https://pawsmatch-c5390-default-rtdb.firebaseio.com",
+    storageBucket: "pawsmatch-c5390.firebasestorage.app",
+    measurementId: "G-RZ3PEXMPTY",
   );
 }
