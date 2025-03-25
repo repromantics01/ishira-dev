@@ -11,9 +11,7 @@ import 'dart:io';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await initializeApp();
 
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
@@ -89,4 +87,12 @@ class FileNotFoundError implements Exception {
   FileNotFoundError(this.message);
   @override
   String toString() => 'FileNotFoundError: $message';
+}
+
+// Mobile-specific initialization
+Future<void> initializeApp() async {
+  // Initialize Firebase for mobile
+  await Firebase.initializeApp();
+  
+  // Initialize any other mobile-specific services
 }

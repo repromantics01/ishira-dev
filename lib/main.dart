@@ -3,25 +3,40 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
-import 'package:pawsmatch/main_mobile.dart' as mobile;
-import 'package:pawsmatch/main_web.dart' as web;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await dotenv.load();
+// Make sure all imports come before any declarations
+import 'main_stub.dart'
+    if (dart.library.html) 'main_web.dart'
+    if (dart.library.io) 'main_mobile.dart';
+
+// Define a stub function that will be replaced by platform implementations
+Future<void> initializeApp() async {
+  if (kIsWeb) {
+    // Web initialization is handled in main_web.dart
+    // This function will be completely replaced when building for web
+  } else {
+    // Default mobile initialization
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully');
-  } catch (e) {
-    print('Error initializing Firebase: $e');
   }
-  if (kIsWeb) {
-    // Run the web version
-    web.main();
-  } else {
-    // Run the mobile version
-    mobile.main();
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase and other services based on platform
+  await initializeApp();
+  
+  runApp(const MyApp());
+}
+
+// Provide a default implementation that will be replaced
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(); // This will be replaced by platform-specific implementations
   }
 }
