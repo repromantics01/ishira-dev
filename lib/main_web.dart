@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pawsmatch/firebase_options.dart';
-import 'package:pawsmatch/pages/web/web_homepage.dart';
+import 'package:pawsmatch/pages/web/web_login.dart';
 import 'dart:js_util' as js_util;
 
 // This function is called from main.dart for web-specific initialization

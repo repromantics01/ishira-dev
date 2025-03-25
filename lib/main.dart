@@ -8,7 +8,7 @@ import 'dart:core';
 
 // Platform-specific implementations
 import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
-import 'package:pawsmatch/pages/web/web_homepage.dart';
+import 'package:pawsmatch/pages/web/web_login.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
