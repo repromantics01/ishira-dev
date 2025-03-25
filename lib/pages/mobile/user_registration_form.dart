@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/models/profile.dart';
-import 'package:pawsmatch/pages/mobile/home_page.dart';
+import 'package:pawsmatch/pages/mobile/user_login.dart';
+import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
 
