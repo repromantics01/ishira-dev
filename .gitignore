@@ -11,7 +11,7 @@
 .env
 .svn/
 .swiftpm/
-.swift
+.swift  
 .cmake
 .stamp
 migrate_working_dir/
@@ -98,6 +98,7 @@ ios/Flutter/Generated.xcconfig
 ios/Flutter/app.framework
 ios/Flutter/app.podspec
 ios/Runner/GeneratedPluginRegistrant.*
+**/generated_plugin_registrant.dart
 
 # Other common ignores
 *.hprof
@@ -111,7 +112,7 @@ flutter/ephemeral/
 *.user
 *.userosscache
 *.sln.docstates
-
+*.cc
 # Visual Studio build-related files.
 x64/
 x86/
@@ -121,6 +122,7 @@ x86/
 *.[Cc]ache
 # but keep track of directories ending in .cache
 !*.[Cc]ache/
+*.cmake
 
 **/doc/api/
 **/ios/Flutter/.last_build_id
@@ -133,8 +135,9 @@ x86/
 /build/
 flutter_*.png
 .plugin_symlinks/
-.cmake/
-.swift/
+.cmake
+.swift
+.cc
 
 # Symbolication related
 app.*.symbols
@@ -170,3 +173,16 @@ hosting/
 .vercel
 .env*.local
 .env.local
+gradle-wrapper.jar
+/.gradle
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks

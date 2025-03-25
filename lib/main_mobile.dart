@@ -1,55 +1,52 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:pawsmatch/firebase_options.dart';
-import 'package:pawsmatch/pages/mobile/home_page.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io';
 
-//TODO: Prohibit organization accounts to login to mobile app
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+// Called from main.dart
+Future<void> initializeMobilePlatform() async {
+  print("Mobile platform initialization");
+  
   try {
-    await initializeApp();
-
+    // Configure Firestore settings
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
     );
-
-    // Print the current working directory
-    print('Current working directory: ${Directory.current.path}');
-
-    // Check if the .env file exists
-    if (File('.env').existsSync()) {
-      print('.env file found');
-    } else {
-      print('.env file not found');
-    }
-
-    // Load the .env file
+    
+    // Initialize Supabase if credentials are available
     try {
-      await dotenv.load(fileName: ".env");
+      String? supabaseUrl = dotenv.env['SUPABASE_URL'];
+      String? supabaseKey = dotenv.env['SUPABASE_KEY'];
+      
+      if (supabaseUrl != null && supabaseKey != null) {
+        await Supabase.initialize(
+          url: supabaseUrl,
+          anonKey: supabaseKey,
+        );
+        print("Supabase initialized successfully");
+      } else {
+        print("Skipping Supabase initialization - missing credentials");
+      }
     } catch (e) {
-      print('Error loading .env file: $e');
-      throw FileNotFoundError('.env file not found');
+      print('Warning: Supabase initialization error: $e');
+      // Continue without Supabase
     }
-
-    await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL']!,
-      anonKey: dotenv.env['SUPABASE_KEY']!,
-    );
-
-    runApp(MyApp());
   } catch (e) {
-    print('Error: $e');
-    runApp(ErrorApp(error: e.toString()));
+    print('Mobile initialization error: $e');
+    throw Exception('Failed to initialize mobile platform: $e');
   }
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+// For backward compatibility
+Future<void> initializeApp() async {
+  await initializeMobilePlatform();
+}
 
+class MyMobileApp extends StatelessWidget {
+  const MyMobileApp({Key? key}) : super(key: key);
+  
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -62,6 +59,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// Error screen for when things go wrong
 class ErrorApp extends StatelessWidget {
   final String error;
 
@@ -75,24 +73,14 @@ class ErrorApp extends StatelessWidget {
           title: Text('Error'),
         ),
         body: Center(
-          child: Text('Failed to initialize Firebase: $error'),
+          child: Text('Failed to initialize app: $error'),
         ),
       ),
     );
   }
 }
 
-class FileNotFoundError implements Exception {
-  final String message;
-  FileNotFoundError(this.message);
-  @override
-  String toString() => 'FileNotFoundError: $message';
-}
-
-// Mobile-specific initialization
-Future<void> initializeApp() async {
-  // Initialize Firebase for mobile
-  await Firebase.initializeApp();
-  
-  // Initialize any other mobile-specific services
+void handleInitError(dynamic error) {
+  print('Error during initialization: $error');
+  runApp(ErrorApp(error: error.toString()));
 }
