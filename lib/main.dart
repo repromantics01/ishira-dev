@@ -1,42 +1,160 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:pawsmatch/firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'firebase_options.dart';
+// Import platform-specific implementations
+import 'dart:core';
 
-// Make sure all imports come before any declarations
-import 'main_stub.dart'
-    if (dart.library.html) 'main_web.dart'
-    if (dart.library.io) 'main_mobile.dart';
-
-// Define a stub function that will be replaced by platform implementations
-Future<void> initializeApp() async {
-  if (kIsWeb) {
-    // Web initialization is handled in main_web.dart
-    // This function will be completely replaced when building for web
-  } else {
-    // Default mobile initialization
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  }
-}
+// Platform-specific implementations
+import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
+import 'package:pawsmatch/pages/web/web_homepage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase and other services based on platform
-  await initializeApp();
+  // Show loading screen first
+  runApp(LoadingApp());
   
-  runApp(const MyApp());
+  try {
+    // Initialize Firebase with the correct options
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("Firebase initialized successfully");
+    
+    // Load environment variables if needed
+    if (!kIsWeb) {
+      try {
+        await dotenv.load(fileName: ".env");
+        print("Loaded environment from .env file");
+      } catch (e) {
+        print("Environment loading error: $e");
+        // Continue anyway
+      }
+    }
+    
+    // Call platform-specific initialization
+    await initPlatformSpecific();
+    
+    // Run the appropriate app based on platform
+    if (kIsWeb) {
+      print("Starting web app");
+      runApp(const WebApp());
+    } else {
+      print("Starting mobile app");
+      runApp(const MobileApp());
+    }
+  } catch (e, stack) {
+    print("Initialization error: $e");
+    print("Stack trace: $stack");
+    runApp(ErrorApp(error: e.toString()));
+  }
 }
 
-// Provide a default implementation that will be replaced
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+// Call platform-specific initialization from either main_web.dart or main_mobile.dart
+Future<void> initPlatformSpecific() async {
+  if (kIsWeb) {
+    // Import web-specific initialization
+    await import('package:pawsmatch/main_web.dart');
+  } else {
+    // Import mobile-specific initialization
+    await import('package:pawsmatch/main_mobile.dart');
+  }
+}
+
+// Loading screen while initializing
+class LoadingApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading PawsMatch...'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Error display screen
+class ErrorApp extends StatelessWidget {
+  final String error;
+
+  const ErrorApp({Key? key, required this.error}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(); // This will be replaced by platform-specific implementations
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text('Error'),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Failed to initialize app:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 16),
+                Text(error, style: TextStyle(color: Colors.red)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+dynamic import(String path) async {
+  // This is a stub for the dynamic import functionality
+  print("Importing: $path");
+  return null;
+}
+
+// Mobile app class
+class MobileApp extends StatelessWidget {
+  const MobileApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'PawsMatch',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: MobileHomepage(),
+    );
+  }
+}
+
+// Web app class
+class WebApp extends StatelessWidget {
+  const WebApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'PawsMatch Web',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+      ),
+      home: WebHomepage(),
+    );
   }
 }

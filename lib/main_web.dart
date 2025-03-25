@@ -5,46 +5,42 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pawsmatch/firebase_options.dart';
-import 'package:pawsmatch/pages/web/home_page.dart';
+import 'package:pawsmatch/pages/web/web_homepage.dart';
 import 'dart:js_util' as js_util;
 
-// Override the initializeApp function from main.dart
+// This function is called from main.dart for web-specific initialization
 Future<void> initializeApp() async {
-  print('Loading environment variables...');
+  print('Web platform initialization');
   
-  final firebaseConfig = js_util.getProperty(js_util.globalThis, 'firebaseConfig');
-  final supabaseConfig = js_util.getProperty(js_util.globalThis, 'supabaseConfig');
+  try {
+    // Configure Firestore
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+    );
 
-  print('Initializing Firebase...');
-  
-  // Create a FirebaseOptions object manually instead of using fromMap
-  await Firebase.initializeApp(
-    options: FirebaseOptions(
-      apiKey: js_util.getProperty(firebaseConfig, 'apiKey'),
-      authDomain: js_util.getProperty(firebaseConfig, 'authDomain'),
-      projectId: js_util.getProperty(firebaseConfig, 'projectId'),
-      storageBucket: js_util.getProperty(firebaseConfig, 'storageBucket'),
-      messagingSenderId: js_util.getProperty(firebaseConfig, 'messagingSenderId'),
-      appId: js_util.getProperty(firebaseConfig, 'appId'),
-      measurementId: js_util.getProperty(firebaseConfig, 'measurementId'),
-    ),
-  );
-  
-  print('Firebase initialized successfully.');
-
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-  );
-
-  // Get values from supabaseConfig directly
-  final supabaseUrl = js_util.getProperty(supabaseConfig, 'url');
-  final supabaseKey = js_util.getProperty(supabaseConfig, 'key');
-  
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseKey,
-  );
-  print('Supabase initialized successfully.');
+    // Try to get Supabase config from JavaScript
+    try {
+      final supabaseConfig = js_util.getProperty(js_util.globalThis, 'supabaseConfig');
+      final supabaseUrl = js_util.getProperty(supabaseConfig, 'url');
+      final supabaseKey = js_util.getProperty(supabaseConfig, 'key');
+      
+      if (supabaseUrl != null && supabaseKey != null) {
+        await Supabase.initialize(
+          url: supabaseUrl,
+          anonKey: supabaseKey,
+        );
+        print('Supabase initialized successfully from JS config');
+      } else {
+        print('Skipping Supabase initialization - missing JS config');
+      }
+    } catch (e) {
+      print('Warning: Could not initialize Supabase from JS config: $e');
+      // Continue without Supabase
+    }
+  } catch (e) {
+    print('Web initialization error: $e');
+    throw Exception('Failed to initialize web platform: $e');
+  }
 }
 
 // Define a MyApp class that will override the one in main.dart

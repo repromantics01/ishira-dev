@@ -32,3 +32,5 @@ flutter:
 
   assets:
     - assets/
+    - assets/photos/
+    - .env
