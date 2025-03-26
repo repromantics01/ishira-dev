@@ -2,9 +2,9 @@
     package="com.softeng.pawsmatch">
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="pawsmatch"
+        android:label="PawsMatch"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/pawsmatch_logo">
         <activity
             android:name=".MainActivity"
             android:exported="true"
