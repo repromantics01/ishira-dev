@@ -7,6 +7,7 @@ import 'package:pawsmatch/pages/mobile/user_login.dart';
 import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
+import 'package:pawsmatch/pages/mobile/success_dialog.dart';  // Add this import
 
 class UserRegistrationForm extends StatefulWidget {
   const UserRegistrationForm({super.key});
@@ -86,10 +87,10 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
           SnackBar(content: Text('User created successfully')),
         );
         
-        // Navigate to login after successful registration
+        // Navigate to success dialog after successful registration
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => UserLogin()),
+          MaterialPageRoute(builder: (context) => const SuccessDialog()),
         );
       } on FirebaseAuthException catch (e) {
         setState(() {
