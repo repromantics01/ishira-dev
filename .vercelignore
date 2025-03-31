@@ -1,0 +1,10 @@
+*
+!build/web/**
+!vercel.json
+!pubspec.yaml
+!pubspec.lock
+!lib/**
+!web/**
+!assets/**
+!.env
+!flutter-sdk/**

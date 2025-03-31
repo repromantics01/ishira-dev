@@ -32,6 +32,10 @@
   <title>pawsmatch</title>
   <link rel="manifest" href="manifest.json">
 
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
+
   <script>
     window.firebaseConfig = {
       apiKey: "%FIREBASE_API_KEY%",
@@ -47,6 +51,11 @@
       url: "%SUPABASE_URL%",
       key: "%SUPABASE_KEY%"
     };
+    
+    // Don't initialize Firebase here - let Flutter handle it
+    // if (typeof firebase !== 'undefined') {
+    //   firebase.initializeApp(window.firebaseConfig);
+    // }
   </script>
 </head>
 <body>
