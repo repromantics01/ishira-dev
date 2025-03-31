@@ -99,14 +99,12 @@ class _OrganizationsListingState extends State<OrganizationsListing> {
           ? Center(child: CircularProgressIndicator())
           : _organizations.isEmpty
               ? Center(child: Text('No organizations found'))
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.only(left: 16.0, bottom: 16.0),
-                      child: SizedBox(
-                        width: 300,
-                        height: 35,
+              : CustomScrollView(
+                  slivers: [
+                    // Title Section now in scrollable area
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
                         child: Text(
                           'Discover',
                           style: TextStyle(
@@ -120,222 +118,224 @@ class _OrganizationsListingState extends State<OrganizationsListing> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 1),
                     
-                    // Improved search bar with icons
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          // Search input with icon
-                          Expanded(
-                            child: Container(
-                              height: 48,
+                    // Search Bar Section now in scrollable area
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+                        child: Row(
+                          children: [
+                            // Search input with icon
+                            Expanded(
+                              child: Container(
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF7F8FD),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: Colors.grey.withOpacity(0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _searchController,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search for organizations',
+                                    hintStyle: TextStyle(
+                                      color: const Color(0xFF8F9098),
+                                      fontSize: 14,
+                                      fontFamily: 'Inter',
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.search,
+                                      color: const Color(0xFF725F63),
+                                      size: 22,
+                                    ),
+                                    suffixIcon: _searchController.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: Icon(
+                                              Icons.clear,
+                                              color: Colors.grey,
+                                              size: 20,
+                                            ),
+                                            onPressed: () {
+                                              _searchController.clear();
+                                              // TODO: Implement search clear logic
+                                              setState(() {});
+                                            },
+                                          )
+                                        : null,
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: 12, 
+                                      horizontal: 12
+                                    ),
+                                  ),
+                                  onChanged: (value) {
+                                    // TODO: Implement search functionality
+                                    setState(() {});
+                                  },
+                                ),
+                              ),
+                            ),
+                            
+                            // Filter/Sort button
+                            Container(
+                              margin: EdgeInsets.only(left: 8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF7F8FD),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: Colors.grey.withOpacity(0.3),
-                                  width: 1,
-                                ),
+                                color: const Color(0xFF725F63),
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              child: TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  hintText: 'Search for organizations',
-                                  hintStyle: TextStyle(
-                                    color: const Color(0xFF8F9098),
-                                    fontSize: 14,
-                                    fontFamily: 'Inter',
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.search,
-                                    color: const Color(0xFF725F63),
-                                    size: 22,
-                                  ),
-                                  suffixIcon: _searchController.text.isNotEmpty
-                                      ? IconButton(
-                                          icon: Icon(
-                                            Icons.clear,
-                                            color: Colors.grey,
-                                            size: 20,
-                                          ),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            // TODO: Implement search clear logic
-                                          },
-                                        )
-                                      : null,
-                                  border: InputBorder.none,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    vertical: 12, 
-                                    horizontal: 12
-                                  ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.filter_list,
+                                  color: Colors.white,
+                                  size: 24,
                                 ),
-                                onChanged: (value) {
-                                  // TODO: Implement search functionality
-                                  setState(() {});
+                                onPressed: () {
+                                  // TODO: Show filter/sort options
+                                  _showFilterOptions();
                                 },
+                                tooltip: 'Filter & Sort',
+                                constraints: BoxConstraints(
+                                  minWidth: 48,
+                                  minHeight: 48,
+                                ),
+                                padding: EdgeInsets.zero,
                               ),
                             ),
-                          ),
-                          
-                          // Filter/Sort button
-                          Container(
-                            margin: EdgeInsets.only(left: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF725F63),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                Icons.filter_list,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                              onPressed: () {
-                                // TODO: Show filter/sort options
-                                _showFilterOptions();
-                              },
-                              tooltip: 'Filter & Sort',
-                              constraints: BoxConstraints(
-                                minWidth: 48,
-                                minHeight: 48,
-                              ),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     
-                    const SizedBox(height: 16),
-                    
                     // Organization list
-                    Expanded(
-                      child: ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: _organizations.length,
-                        itemBuilder: (context, index) {
-                          final org = _organizations[index];
-                          return Card(
-                            elevation: 3,
-                            margin: EdgeInsets.only(bottom: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  height: 150,
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFD8CBCB),
-                                    borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(12),
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final org = _organizations[index];
+                            return Card(
+                              elevation: 3,
+                              margin: EdgeInsets.only(bottom: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFD8CBCB),
+                                      borderRadius: BorderRadius.vertical(
+                                        top: Radius.circular(12),
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.pets,
+                                        size: 60,
+                                        color: Color(0xFF725F63),
+                                      ),
                                     ),
                                   ),
-                                  child: Center(
-                                    child: Icon(
-                                      Icons.pets,
-                                      size: 60,
-                                      color: Color(0xFF725F63),
+                                  Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          org['name'],
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF545454),
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.location_on,
+                                              size: 16,
+                                              color: Color(0xFF725F63),
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              org['location'],
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          org['description'],
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[800],
+                                          ),
+                                        ),
+                                        SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            OutlinedButton(
+                                              onPressed: () {
+                                                // TODO: Implement viewing organization details
+                                              },
+                                              style: OutlinedButton.styleFrom(
+                                                side: BorderSide(
+                                                    color: Color(0xFF725F63)),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                'View Details',
+                                                style: TextStyle(
+                                                  color: Color(0xFF725F63),
+                                                ),
+                                              ),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                // TODO: Implement contacting organization
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    Color(0xFF725F63),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                'Contact',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                                Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        org['name'],
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF545454),
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.location_on,
-                                            size: 16,
-                                            color: Color(0xFF725F63),
-                                          ),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            org['location'],
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        org['description'],
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[800],
-                                        ),
-                                      ),
-                                      SizedBox(height: 16),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          OutlinedButton(
-                                            onPressed: () {
-                                              // TODO: Implement viewing organization details
-                                            },
-                                            style: OutlinedButton.styleFrom(
-                                              side: BorderSide(
-                                                  color: Color(0xFF725F63)),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'View Details',
-                                              style: TextStyle(
-                                                color: Color(0xFF725F63),
-                                              ),
-                                            ),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              // TODO: Implement contacting organization
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  Color(0xFF725F63),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'Contact',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                                ],
+                              ),
+                            );
+                          },
+                          childCount: _organizations.length,
+                        ),
                       ),
                     ),
                   ],
