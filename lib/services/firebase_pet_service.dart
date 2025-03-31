@@ -32,6 +32,18 @@ class FirebasePetService {
     return _petCollectionRef.doc().id;
   }
 
+  // Get all pets from the database
+  Stream<QuerySnapshot<Pet>> getAllPets() {
+    return _petCollectionRef.snapshots();
+  }
+  
+  // Get pets by surrenderer ID
+  Stream<QuerySnapshot<Pet>> getPetsBySurrendererId(String surrendererId) {
+    return _petCollectionRef
+        .where('surrenderer_id', isEqualTo: surrendererId)
+        .snapshots();
+  }
+
   getPetWithId(String id) {
     return _petCollectionRef.doc(id).get();
   }

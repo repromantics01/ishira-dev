@@ -12,7 +12,10 @@ class Photo {
   Photo.fromJson(Map<String, dynamic> json)
       : photo_id = json['photo_id'] as String,
         photo_url = json['photo_url'] as String,
-        date_added = json['date_added'] as DateTime;
+        // Handle Timestamp object from Firestore
+        date_added = (json['date_added'] is DateTime) 
+            ? json['date_added'] 
+            : (json['date_added']?.toDate() ?? DateTime.now());
 
   Photo copyWith({
     String? photo_id,
