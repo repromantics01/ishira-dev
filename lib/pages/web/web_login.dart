@@ -1,14 +1,76 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:pawsmatch/pages/web/moderator/dashboard.dart';
-import 'package:pawsmatch/pages/web/organization/dashboard.dart';
+import 'package:pawsmatch/pages/web/moderator/org_dashboard.dart';
+import 'package:pawsmatch/pages/web/organization/org_dashboard.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/pages/web/organization/sign_up.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-class WebHomepage extends StatelessWidget {
+class WebHomepage extends StatefulWidget {
+  @override
+  _WebHomepageState createState() => _WebHomepageState();
+}
+
+class _WebHomepageState extends State<WebHomepage> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  
+  bool _isFirebaseInitialized = false;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFirebase();
+  }
+
+  _initializeFirebase() async {
+    try {
+      // Check if Firebase is already initialized
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+      setState(() {
+        _isFirebaseInitialized = true;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error initializing Firebase: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (!_isFirebaseInitialized) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Failed to initialize Firebase'),
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _initializeFirebase,
+                child: Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         width: MediaQuery.of(context).size.width,
@@ -61,6 +123,7 @@ class WebHomepage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
+                      controller: _emailController,
                       decoration: InputDecoration(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         border: OutlineInputBorder(
@@ -108,6 +171,7 @@ class WebHomepage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
+                      controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -145,36 +209,41 @@ class WebHomepage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 416,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      decoration: ShapeDecoration(
-                        color: const Color(0xFF212121),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    InkWell(
+                      onTap: () async {
+                        // Handle login functionality here
+                      },
+                      child: Container(
+                        width: 416,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFF212121),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 368,
-                            child: Text(
-                              'LOGIN',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontFamily: 'DM Sans',
-                                fontWeight: FontWeight.w400,
-                                height: 1,
-                                letterSpacing: 1.25,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 368,
+                              child: Text(
+                                'LOGIN',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w400,
+                                  height: 1,
+                                  letterSpacing: 1.25,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -191,36 +260,46 @@ class WebHomepage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 416,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      decoration: ShapeDecoration(
-                        color: const Color(0xFF212121),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SignUpForm(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 416,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFF212121),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 368,
-                            child: Text(
-                              'SIGN UP',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontFamily: 'DM Sans',
-                                fontWeight: FontWeight.w400,
-                                height: 1,
-                                letterSpacing: 1.25,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 368,
+                              child: Text(
+                                'SIGN UP',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w400,
+                                  height: 1,
+                                  letterSpacing: 1.25,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
