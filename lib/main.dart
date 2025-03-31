@@ -2,12 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:pawsmatch/firebase_options.dart';
+import 'package:pawsmatch/services/app_config_service.dart';
+import 'package:pawsmatch/services/supabase_client_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 // Direct imports for platform-specific code
 import 'package:pawsmatch/main_mobile.dart' as mobile;
-// import 'package:pawsmatch/main_web.dart' as web; // Uncomment when available
+import 'package:pawsmatch/main_web.dart' as web;
 import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
 import 'package:pawsmatch/pages/web/web_login.dart';
+import 'package:pawsmatch/utils/firebase_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,18 +30,27 @@ void main() async {
       }
     }
     
-    // Initialize Firebase ONCE with the correct options
-    await Firebase.initializeApp(
-      name: 'PawsMatch',
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    print("Firebase initialized successfully");
+    // Initialize Firebase using our helper class
+    // This centralizes Firebase initialization and prevents duplicates
+    try {
+      await FirebaseHelper.ensureInitialized();
+      print("Firebase initialization handled by FirebaseHelper");
+    } catch (e) {
+      print("Firebase initialization error: $e");
+      // Continue if possible - the app might still work with limited functionality
+    }
+    
+    // Initialize AppConfigService
+    final configService = AppConfigService();
+    await configService.initialize();
+    
+    // Initialize Supabase once
+    await SupabaseClientService.initialize();
     
     // Call platform-specific initialization
     if (kIsWeb) {
       print("Starting web app");
-      // Uncomment when web implementation is ready
-      // await web.initializeWebPlatform();
+      await web.initializeApp(); // Other web-specific setup
       runApp(const WebApp());
     } else {
       print("Starting mobile platform initialization");

@@ -1,38 +1,27 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/pages/mobile/mobile_homepage.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
 
 // Called from main.dart
 Future<void> initializeMobilePlatform() async {
   print("Mobile platform initialization");
   
   try {
+    // Verify Firebase is initialized
+    if (Firebase.apps.isEmpty) {
+      throw Exception("Firebase should be initialized in main.dart before calling this method");
+    }
+    
     // Configure Firestore settings
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
+      cacheSizeBytes: 10485760, // 10MB
     );
     
-    // Initialize Supabase if credentials are available
-    try {
-      String? supabaseUrl = dotenv.env['SUPABASE_URL'];
-      String? supabaseKey = dotenv.env['SUPABASE_KEY'];
-      
-      if (supabaseUrl != null && supabaseKey != null) {
-        await Supabase.initialize(
-          url: supabaseUrl,
-          anonKey: supabaseKey,
-        );
-        print("Supabase initialized successfully");
-      } else {
-        print("Skipping Supabase initialization - missing credentials");
-      }
-    } catch (e) {
-      print('Warning: Supabase initialization error: $e');
-      // Continue without Supabase
-    }
+    // Any other mobile-specific initialization
+    // Note: Supabase is now initialized in the main.dart file
+    
   } catch (e) {
     print('Mobile initialization error: $e');
     throw Exception('Failed to initialize mobile platform: $e');
