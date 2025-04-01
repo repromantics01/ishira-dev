@@ -431,30 +431,7 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => SurrenderForm()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF725F63),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Surrender Pet',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
+                ),                
               ],
             ),
           ),

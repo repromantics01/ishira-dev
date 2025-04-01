@@ -8,6 +8,20 @@ class Organization {
   DateTime date_created;
   List<String> admin_ids;
   bool isVerified;
+  
+  // Additional fields for organization profile
+  String? location;
+  String? address;
+  String? about;
+  String? mission;
+  List<String>? services;
+  String? weekday_hours;
+  String? weekend_hours;
+  String? email;
+  String? landline;
+  Map<String, String>? contact_numbers;
+  String? logo_url;
+  Map<String, String>? social_media_links;
 
   Organization({
     required this.org_id,
@@ -16,17 +30,74 @@ class Organization {
     required this.date_created,
     required this.admin_ids,
     this.isVerified = false,
+    this.location,
+    this.address,
+    this.about,
+    this.mission,
+    this.services,
+    this.weekday_hours,
+    this.weekend_hours,
+    this.email,
+    this.landline,
+    this.contact_numbers,
+    this.logo_url,
+    this.social_media_links,
   });
 
   Organization.fromJson(Map<String, dynamic> json)
-      : org_id = json['org_id'] as String,
-        org_name = json['org_name'] as String,
-        org_proof_of_validation = json['org_proof_of_validation'] as String,
-        date_created = (json['date_created'] is Timestamp)
-            ? (json['date_created'] as Timestamp).toDate()
-            : DateTime.parse(json['date_created'] as String),
-        admin_ids = List<String>.from(json['admin_ids'] ?? []),
-        isVerified = json['isVerified'] as bool? ?? false;
+      : org_id = json['org_id'] as String? ?? 'unknown_id',
+        org_name = json['org_name'] as String? ?? 'Unnamed Organization',
+        org_proof_of_validation = json['org_proof_of_validation'] as String? ?? '',
+        date_created = _parseDateTime(json['date_created']),
+        admin_ids = _parseStringList(json['admin_ids']),
+        isVerified = json['isVerified'] as bool? ?? false,
+        // Additional fields
+        location = json['location'] as String?,
+        address = json['address'] as String?,
+        about = json['about'] as String?,
+        mission = json['mission'] as String?,
+        services = json['services'] != null ? List<String>.from(json['services']) : null,
+        weekday_hours = json['weekday_hours'] as String?,
+        weekend_hours = json['weekend_hours'] as String?,
+        email = json['email'] as String?,
+        landline = json['landline'] as String?,
+        contact_numbers = _parseMap(json['contact_numbers']),
+        logo_url = json['logo_url'] as String?,
+        social_media_links = _parseMap(json['social_media_links']);
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is Timestamp) {
+      return value.toDate();
+    } else if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        print('Error parsing date string: $e');
+        return DateTime.now();
+      }
+    }
+    return DateTime.now(); // Default value
+  }
+  
+  static List<String> _parseStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((item) => item.toString()).toList();
+    }
+    return []; // Default empty list
+  }
+  
+  static Map<String, String>? _parseMap(dynamic value) {
+    if (value == null) return null;
+    if (value is Map) {
+      final result = <String, String>{};
+      value.forEach((key, val) {
+        result[key.toString()] = val.toString();
+      });
+      return result;
+    }
+    return null;
+  }
 
   Organization copyWith({
     String? org_id,
@@ -35,6 +106,18 @@ class Organization {
     DateTime? date_created,
     List<String>? admin_ids,
     bool? isVerified,
+    String? location,
+    String? address,
+    String? about,
+    String? mission,
+    List<String>? services,
+    String? weekday_hours,
+    String? weekend_hours,
+    String? email,
+    String? landline,
+    Map<String, String>? contact_numbers,
+    String? logo_url,
+    Map<String, String>? social_media_links,
   }) {
     return Organization(
       org_id: org_id ?? this.org_id,
@@ -43,10 +126,22 @@ class Organization {
       date_created: date_created ?? this.date_created,
       admin_ids: admin_ids ?? this.admin_ids,
       isVerified: isVerified ?? this.isVerified,
+      location: location ?? this.location,
+      address: address ?? this.address,
+      about: about ?? this.about,
+      mission: mission ?? this.mission,
+      services: services ?? this.services,
+      weekday_hours: weekday_hours ?? this.weekday_hours,
+      weekend_hours: weekend_hours ?? this.weekend_hours,
+      email: email ?? this.email,
+      landline: landline ?? this.landline,
+      contact_numbers: contact_numbers ?? this.contact_numbers,
+      logo_url: logo_url ?? this.logo_url,
+      social_media_links: social_media_links ?? this.social_media_links,
     );
   }
 
-  Map<String, dynamic?> toJson() {
+  Map<String, dynamic> toJson() {
     return {
       'org_id': org_id,
       'org_name': org_name,
@@ -54,6 +149,18 @@ class Organization {
       'date_created': date_created.toIso8601String(),
       'admin_ids': admin_ids,
       'isVerified': isVerified,
+      'location': location,
+      'address': address,
+      'about': about,
+      'mission': mission,
+      'services': services,
+      'weekday_hours': weekday_hours,
+      'weekend_hours': weekend_hours,
+      'email': email,
+      'landline': landline,
+      'contact_numbers': contact_numbers,
+      'logo_url': logo_url,
+      'social_media_links': social_media_links,
     };
   }
 }

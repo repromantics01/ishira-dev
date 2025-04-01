@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
-import 'package:pawsmatch/services/firebase_photo_service.dart'; // Add this import
+import 'package:pawsmatch/services/firebase_photo_service.dart';
+import 'package:pawsmatch/services/firebase_surrender_service.dart';
 import 'package:pawsmatch/models/pet.dart';
-import 'package:pawsmatch/models/photo.dart'; // Add this import
+import 'package:pawsmatch/models/photo.dart';
+import 'package:pawsmatch/models/surrender.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
@@ -18,10 +20,14 @@ class SurrenderHistory extends StatefulWidget {
 
 class _SurrenderHistoryState extends State<SurrenderHistory> {
   final FirebasePetService _petService = FirebasePetService();
-  final FirebasePhotoService _photoService = FirebasePhotoService(); // Add this
+  final FirebasePhotoService _photoService = FirebasePhotoService();
+  final FirebaseSurrenderService _surrenderService = FirebaseSurrenderService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
   String _filter = 'All';
+  List<String> _userSurrenderPetIds = [];
   
   // Cache for photo URLs to avoid repeated lookups
   final Map<String, String> _photoUrlCache = {};
@@ -29,6 +35,33 @@ class _SurrenderHistoryState extends State<SurrenderHistory> {
   @override
   void initState() {
     super.initState();
+    _fetchUserSurrenders();
+  }
+  
+  // Fetch surrender records for the current user
+  Future<void> _fetchUserSurrenders() async {
+    String? userId = _auth.currentUser?.uid;
+    if (userId != null) {
+      try {
+        setState(() {
+          _isLoading = true;
+        });
+        
+        // Get surrender records where account_id matches current user
+        final surrenders = await _surrenderService.getSurrendersByAccountId(userId);
+        
+        setState(() {
+          // Extract just the pet IDs from the surrender records
+          _userSurrenderPetIds = surrenders.map((surrender) => surrender.pet_id).toList();
+          _isLoading = false;
+        });
+      } catch (e) {
+        print('Error fetching user surrenders: $e');
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
   
   @override
@@ -90,27 +123,20 @@ class _SurrenderHistoryState extends State<SurrenderHistory> {
   Future<String?> _getPhotoUrl(String photoId) async {
     // Check if URL is already in cache
     if (_photoUrlCache.containsKey(photoId)) {
-      print('Using cached photo URL for $photoId: ${_photoUrlCache[photoId]}');
       return _photoUrlCache[photoId];
     }
     
     try {
-      print('Fetching photo with ID: $photoId');
-      // Get photo document from Firestore
       var photoDoc = await _photoService.getPhotoWithId(photoId);
       
       if (photoDoc.exists) {
-        print('Photo document exists for $photoId');
-        // Extract data correctly from DocumentSnapshot
         final data = photoDoc.data();
         if (data == null) {
           print('Photo data is null for $photoId');
           return null;
         }
         
-        // Access photo_url directly
         final photoUrl = data.photo_url;
-        print('Retrieved photo URL: $photoUrl');
         
         // Store URL in cache before returning
         _photoUrlCache[photoId] = photoUrl;
@@ -160,492 +186,462 @@ class _SurrenderHistoryState extends State<SurrenderHistory> {
                 ),
               ),
             )
-          : StreamBuilder<QuerySnapshot<Pet>>(
-              stream: _petService.getAllPets(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error loading pets: ${snapshot.error}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.red,
-                      ),
-                    ),
-                  );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No surrendered pets found',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  );
-                }
-
-                var pets = snapshot.data!.docs
-                    .map((doc) => doc.data())
-                    .where((pet) {
-                      if (_searchController.text.isEmpty) return true;
-                      return pet.pet_name
-                              .toLowerCase()
-                              .contains(_searchController.text.toLowerCase()) ||
-                          pet.breed
-                              .toLowerCase()
-                              .contains(_searchController.text.toLowerCase());
-                    })
-                    .where((pet) {
-                      if (_filter == 'All') return true;
-                      return _getStatusText(pet.pet_status) == _filter;
-                    })
-                    .toList();
-
-                if (pets.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No pets match your filters',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  );
-                }
-
-                // Use CustomScrollView to have everything scroll together
-                return CustomScrollView(
-                  slivers: [
-                    // Title Section now in scrollable area
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-                        child: Text(
-                          'My Pets',
-                          style: TextStyle(
-                            color: const Color(0xFF545454),
-                            fontSize: 28,
-                            fontFamily: 'Arial',
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
+          : _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : _userSurrenderPetIds.isEmpty
+                  ? Center(
+                      child: Text(
+                        'You have not surrendered any pets yet',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[700],
                         ),
                       ),
-                    ),
-                    
-                    // Search Bar Section now in scrollable area
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF7F8FD),
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: Colors.grey.withOpacity(0.3),
-                                    width: 1,
+                    )
+                  : StreamBuilder<QuerySnapshot<Pet>>(
+                      stream: _petService.getAllPets(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
+
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Error loading pets: ${snapshot.error}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.red,
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No surrendered pets found',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Filter to only show pets surrendered by the current user
+                        var pets = snapshot.data!.docs
+                            .map((doc) => doc.data())
+                            .where((pet) => _userSurrenderPetIds.contains(pet.pet_id))
+                            .where((pet) {
+                              if (_searchController.text.isEmpty) return true;
+                              return pet.pet_name
+                                      .toLowerCase()
+                                      .contains(_searchController.text.toLowerCase()) ||
+                                  pet.breed
+                                      .toLowerCase()
+                                      .contains(_searchController.text.toLowerCase());
+                            })
+                            .where((pet) {
+                              if (_filter == 'All') return true;
+                              return _getStatusText(pet.pet_status) == _filter;
+                            })
+                            .toList();
+
+                        if (pets.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No pets match your filters',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          );
+                        }
+
+                        // Use CustomScrollView to have everything scroll together
+                        return CustomScrollView(
+                          slivers: [
+                            // Title Section now in scrollable area
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+                                child: Text(
+                                  'My Pets',
+                                  style: TextStyle(
+                                    color: const Color(0xFF545454),
+                                    fontSize: 28,
+                                    fontFamily: 'Arial',
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.2,
                                   ),
-                                ),
-                                child: TextField(
-                                  controller: _searchController,
-                                  decoration: InputDecoration(
-                                    // ...existing TextField decoration...
-                                    hintText: 'Search for pets',
-                                    hintStyle: TextStyle(
-                                      color: const Color(0xFF8F9098),
-                                      fontSize: 14,
-                                      fontFamily: 'Inter',
-                                    ),
-                                    prefixIcon: Icon(
-                                      Icons.search,
-                                      color: const Color(0xFF725F63),
-                                      size: 22,
-                                    ),
-                                    suffixIcon: _searchController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: Icon(
-                                              Icons.clear,
-                                              color: Colors.grey,
-                                              size: 20,
-                                            ),
-                                            onPressed: () {
-                                              _searchController.clear();
-                                              setState(() {});
-                                            },
-                                          )
-                                        : null,
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(
-                                      vertical: 12,
-                                      horizontal: 12,
-                                    ),
-                                  ),
-                                  onChanged: (value) {
-                                    setState(() {});
-                                  },
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF725F63),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.filter_list,
-                                  color: Colors.white,
-                                  size: 24,
+                            
+                            // Search Bar Section now in scrollable area
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF7F8FD),
+                                          borderRadius: BorderRadius.circular(24),
+                                          border: Border.all(
+                                            color: Colors.grey.withOpacity(0.3),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: TextField(
+                                          controller: _searchController,
+                                          decoration: InputDecoration(
+                                            // ...existing TextField decoration...
+                                            hintText: 'Search for pets',
+                                            hintStyle: TextStyle(
+                                              color: const Color(0xFF8F9098),
+                                              fontSize: 14,
+                                              fontFamily: 'Inter',
+                                            ),
+                                            prefixIcon: Icon(
+                                              Icons.search,
+                                              color: const Color(0xFF725F63),
+                                              size: 22,
+                                            ),
+                                            suffixIcon: _searchController.text.isNotEmpty
+                                                ? IconButton(
+                                                    icon: Icon(
+                                                      Icons.clear,
+                                                      color: Colors.grey,
+                                                      size: 20,
+                                                    ),
+                                                    onPressed: () {
+                                                      _searchController.clear();
+                                                      setState(() {});
+                                                    },
+                                                  )
+                                                : null,
+                                            border: InputBorder.none,
+                                            contentPadding: EdgeInsets.symmetric(
+                                              vertical: 12,
+                                              horizontal: 12,
+                                            ),
+                                          ),
+                                          onChanged: (value) {
+                                            setState(() {});
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF725F63),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: IconButton(
+                                        icon: Icon(
+                                          Icons.filter_list,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                        onPressed: _showFilterOptions,
+                                        tooltip: 'Filter & Sort',
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                onPressed: _showFilterOptions,
-                                tooltip: 'Filter & Sort',
+                              ),
+                            ),
+                            
+                            // Pet List
+                            SliverPadding(
+                              padding: const EdgeInsets.all(16),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final pet = pets[index];
+                                    final cardColor = _getPetCardColor(pet.gender);
+                                    
+                                    return Card(
+                                      // ...existing card code...
+                                      elevation: 4,
+                                      margin: const EdgeInsets.only(bottom: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Pet Image Section
+                                          ClipRRect(
+                                            borderRadius: const BorderRadius.vertical(
+                                              top: Radius.circular(12),
+                                            ),
+                                            child: pet.photo_id.isNotEmpty
+                                                ? FutureBuilder<String?>(
+                                                    future: _getPhotoUrl(pet.photo_id[0]),
+                                                    builder: (context, photoSnapshot) {
+                                                      if (photoSnapshot.connectionState == 
+                                                          ConnectionState.waiting) {
+                                                        return Container(
+                                                          height: 150,
+                                                          color: cardColor,
+                                                          child: Center(
+                                                            child: CircularProgressIndicator(),
+                                                          ),
+                                                        );
+                                                      }
+                                                      
+                                                      final photoUrl = photoSnapshot.data;
+                                                      if (photoUrl == null || photoUrl.isEmpty) {
+                                                        return Container(
+                                                          height: 150,
+                                                          color: cardColor,
+                                                          child: Center(
+                                                            child: Icon(
+                                                              Icons.pets,
+                                                              size: 60,
+                                                              color: const Color(0xFF725F63),
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }
+                                                      
+                                                      // Show actual photo with error handling
+                                                      return Container(
+                                                        height: 150,
+                                                        width: double.infinity,
+                                                        child: Image.network(
+                                                          photoUrl,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (context, error, stackTrace) {
+                                                            return Container(
+                                                              height: 150,
+                                                              color: cardColor,
+                                                              child: Center(
+                                                                child: Icon(
+                                                                  Icons.broken_image,
+                                                                  size: 60,
+                                                                  color: const Color(0xFF725F63),
+                                                                ),
+                                                              ),
+                                                            );
+                                                          },
+                                                          loadingBuilder: (context, child, loadingProgress) {
+                                                            if (loadingProgress == null) return child;
+                                                            return Container(
+                                                              height: 150,
+                                                              color: cardColor,
+                                                              child: Center(
+                                                                child: CircularProgressIndicator(
+                                                                  value: loadingProgress.expectedTotalBytes != null
+                                                                      ? loadingProgress.cumulativeBytesLoaded /
+                                                                          loadingProgress.expectedTotalBytes!
+                                                                      : null,
+                                                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                                                      const Color(0xFF725F63)),
+                                                                ),
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                      );
+                                                    },
+                                                  )
+                                                : Container(
+                                                    height: 150,
+                                                    color: cardColor, // Use gender-specific color
+                                                    child: Center(
+                                                      child: Icon(
+                                                        Icons.pets,
+                                                        size: 60,
+                                                        color: const Color(0xFF725F63),
+                                                      ),
+                                                    ),
+                                                  ),
+                                          ),
+
+                                          // Pet Details Section
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              color: cardColor.withOpacity(0.3), // Lighter version of gender color
+                                              borderRadius: const BorderRadius.vertical(
+                                                bottom: Radius.circular(12),
+                                              ),
+                                            ),
+                                            padding: const EdgeInsets.all(12),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                // Header row with name and status
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        pet.pet_name,
+                                                        style: TextStyle(
+                                                          fontSize: 18,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Colors.black87,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: _getStatusColor(pet.pet_status),
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        _getStatusText(pet.pet_status),
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                
+                                                // Combined row for gender and species/breed
+                                                Row(
+                                                  children: [
+                                                    // Gender
+                                                    Icon(
+                                                      pet.gender.toLowerCase() == 'male' ? Icons.male : Icons.female,
+                                                      size: 16,
+                                                      color: const Color(0xFF725F63),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      pet.gender,
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        color: Colors.grey[800],
+                                                      ),
+                                                    ),
+                                                    
+                                                    // Divider
+                                                    Padding(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                      child: Text(
+                                                        '•',
+                                                        style: TextStyle(
+                                                          color: Colors.grey[600],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    
+                                                    // Species and breed
+                                                    Icon(
+                                                      Icons.pets,
+                                                      size: 16,
+                                                      color: const Color(0xFF725F63),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: Text(
+                                                        '${pet.species} - ${pet.breed}',
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          color: Colors.grey[800],
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                
+                                                // Age info
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.cake,
+                                                      size: 16,
+                                                      color: const Color(0xFF725F63),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      _getPetAge(pet.birthdate),
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        color: Colors.grey[800],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                
+                                                // Description with limited lines
+                                                Text(
+                                                  pet.description,
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.grey[800],
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 10),
+                                                
+                                                // View Details button
+                                                Center(
+                                                  child: ElevatedButton(
+                                                    onPressed: () {
+                                                      // TODO: Implement viewing pet details
+                                                    },
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: const Color(0xFF725F63),
+                                                      foregroundColor: Colors.white,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(20),
+                                                      ),
+                                                      padding: EdgeInsets.symmetric(
+                                                        horizontal: 24, 
+                                                        vertical: 8,
+                                                      ),
+                                                    ),
+                                                    child: const Text(
+                                                      'View Details',
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  childCount: pets.length,
+                                ),
                               ),
                             ),
                           ],
-                        ),
-                      ),
+                        );
+                      },
                     ),
-                    
-                    // Pet List
-                    SliverPadding(
-                      padding: const EdgeInsets.all(16),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final pet = pets[index];
-                            final cardColor = _getPetCardColor(pet.gender);
-                            
-                            return Card(
-                              // ...existing card code...
-                              elevation: 4,
-                              margin: const EdgeInsets.only(bottom: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Pet Image Section
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(12),
-                                    ),
-                                    child: pet.photo_id.isNotEmpty
-                                        ? FutureBuilder<String?>(
-                                            future: _getPhotoUrl(pet.photo_id[0]),
-                                            builder: (context, photoSnapshot) {
-                                              // Add debug output for photo loading
-                                              print('Photo loading state: ${photoSnapshot.connectionState} for pet: ${pet.pet_name}');
-                                              if (photoSnapshot.hasData) {
-                                                print('Photo URL loaded: ${photoSnapshot.data}');
-                                              }
-                                              if (photoSnapshot.hasError) {
-                                                print('Photo error: ${photoSnapshot.error}');
-                                              }
-                                              
-                                              if (photoSnapshot.connectionState == 
-                                                  ConnectionState.waiting) {
-                                                return Container(
-                                                  height: 150,
-                                                  color: cardColor,
-                                                  child: Center(
-                                                    child: CircularProgressIndicator(
-                                                      color: const Color(0xFF725F63),
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                              
-                                              final photoUrl = photoSnapshot.data;
-                                              if (photoUrl == null || photoUrl.isEmpty) {
-                                                print('No valid photo URL found for pet: ${pet.pet_name}');
-                                                return Container(
-                                                  height: 150,
-                                                  color: cardColor,
-                                                  child: Center(
-                                                    child: Column(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Icon(
-                                                          Icons.pets,
-                                                          size: 60,
-                                                          color: const Color(0xFF725F63),
-                                                        ),
-                                                        Text(
-                                                          'No photo available',
-                                                          style: TextStyle(
-                                                            color: const Color(0xFF725F63),
-                                                            fontSize: 12,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-                                              
-                                              // Show actual photo with error handling
-                                              return Container(
-                                                height: 150,
-                                                width: double.infinity,
-                                                child: Image.network(
-                                                  photoUrl,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) {
-                                                    print('Error loading image: $error');
-                                                    return Container(
-                                                      color: cardColor,
-                                                      child: Center(
-                                                        child: Column(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            Icon(
-                                                              Icons.broken_image,
-                                                              size: 40,
-                                                              color: const Color(0xFF725F63),
-                                                            ),
-                                                            SizedBox(height: 8),
-                                                            Text(
-                                                              'Failed to load image',
-                                                              style: TextStyle(
-                                                                color: const Color(0xFF725F63),
-                                                                fontSize: 12,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  loadingBuilder: (context, child, loadingProgress) {
-                                                    if (loadingProgress == null) return child;
-                                                    return Container(
-                                                      color: cardColor,
-                                                      child: Center(
-                                                        child: CircularProgressIndicator(
-                                                          value: loadingProgress.expectedTotalBytes != null
-                                                              ? loadingProgress.cumulativeBytesLoaded /
-                                                                  loadingProgress.expectedTotalBytes!
-                                                              : null,
-                                                          color: const Color(0xFF725F63),
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                              );
-                                            },
-                                          )
-                                        : Container(
-                                            height: 150,
-                                            color: cardColor, // Use gender-specific color
-                                            child: Center(
-                                              child: Icon(
-                                                Icons.pets,
-                                                size: 60,
-                                                color: const Color(0xFF725F63),
-                                              ),
-                                            ),
-                                          ),
-                                  ),
-
-                                  // Optimized Pet Details Section
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: cardColor.withOpacity(0.3), // Lighter version of gender color
-                                      borderRadius: const BorderRadius.vertical(
-                                        bottom: Radius.circular(12),
-                                      ),
-                                    ),
-                                    padding: const EdgeInsets.all(12),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        // Header row with name and status
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                pet.pet_name,
-                                                style: const TextStyle(
-                                                  fontSize: 18,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF545454),
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: _getStatusColor(pet.pet_status)
-                                                    .withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(
-                                                  color: _getStatusColor(pet.pet_status),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: Text(
-                                                _getStatusText(pet.pet_status),
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: _getStatusColor(pet.pet_status),
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        
-                                        // Combined row for gender and species/breed
-                                        Row(
-                                          children: [
-                                            // Gender
-                                            Icon(
-                                              pet.gender.toLowerCase() == 'male' 
-                                                  ? Icons.male 
-                                                  : Icons.female,
-                                              size: 16,
-                                              color: const Color(0xFF725F63),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              pet.gender,
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.grey[700],
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            
-                                            // Divider
-                                            Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                                              child: Text(
-                                                '•',
-                                                style: TextStyle(
-                                                  color: Colors.grey[600],
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                            
-                                            // Species and breed
-                                            Icon(
-                                              Icons.pets,
-                                              size: 16,
-                                              color: const Color(0xFF725F63),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Expanded(
-                                              child: Text(
-                                                '${pet.species} • ${pet.breed}',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[600],
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        
-                                        // Age info
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.cake,
-                                              size: 16,
-                                              color: const Color(0xFF725F63),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              _getPetAge(pet.birthdate),
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        
-                                        // Description with limited lines
-                                        Text(
-                                          pet.description,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey[800],
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 10),
-                                        
-                                        // View Details button
-                                        Center(
-                                          child: ElevatedButton(
-                                            onPressed: () {
-                                              // TODO: Implement viewing pet details
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF725F63),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 32, 
-                                                vertical: 10,
-                                              ),
-                                            ),
-                                            child: const Text(
-                                              'View Details',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          childCount: pets.length,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
     );
   }
   
   void _showFilterOptions() {
+    // ...existing code...
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
