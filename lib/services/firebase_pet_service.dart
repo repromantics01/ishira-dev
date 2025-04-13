@@ -194,5 +194,18 @@ class FirebasePetService {
       return [];
     }
   }
+  Future<Pet> getPetById(String petId) async {
+    try {
+      final petDoc = await _petCollectionRef.doc(petId).get();
+      if (petDoc.exists) {
+        return petDoc.data()!;
+      } else {
+        throw Exception('Pet not found');
+      }
+    } catch (e) {
+      print('Error fetching pet by ID: $e');
+      rethrow;
+    }
+  }
 }
 

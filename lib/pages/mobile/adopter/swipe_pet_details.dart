@@ -85,7 +85,7 @@ class _SwipePetDetailsState extends State<SwipePetDetails> with SingleTickerProv
     }
   }
   
-  // Calculate pet age from birthdate
+  // Calculate pet age from birthdate - fixed to properly display ages under 1 year
   String _calculateAge(DateTime birthdate) {
     final now = DateTime.now();
     int years = now.year - birthdate.year;
@@ -105,10 +105,10 @@ class _SwipePetDetailsState extends State<SwipePetDetails> with SingleTickerProv
     if (years == 0) {
       // Show months for pets under a year old
       // Make sure we show at least 1 month for very young pets
-      return '${months < 1 ? 1 : months} ${months == 1 ? 'month' : 'months'}';
+      return '${months < 1 ? 1 : months} ${months == 1 ? 'month' : 'months'} old';
     } else {
       // Show years for older pets
-      return '$years ${years == 1 ? 'year' : 'years'}';
+      return '$years ${years == 1 ? 'year' : 'years'} old';
     }
   }
 
@@ -306,8 +306,9 @@ class _SwipePetDetailsState extends State<SwipePetDetails> with SingleTickerProv
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                               SizedBox(height: 5),
+                                              // Fix the age display text in the UI
                                               Text(
-                                                '${_calculateAge(widget.pet.birthdate)} years old',
+                                                '${_calculateAge(widget.pet.birthdate)}',
                                                 style: GoogleFonts.nunito(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.w600,

@@ -122,4 +122,16 @@ class FirebaseSurrenderService {
       return null;
     }
   }
+
+  Future<List<Surrender>> getSurrendersByPetId(String petId) async {
+    try {
+      final querySnapshot = await _surrenderCollectionRef
+          .where('pet_id', isEqualTo: petId)
+          .get();
+      return querySnapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      print('Error getting surrenders by pet ID: $e');
+      return [];
+    }
+  }
 }
