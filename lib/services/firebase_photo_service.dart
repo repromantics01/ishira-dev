@@ -45,11 +45,33 @@ class FirebasePhotoService {
     return _photoCollectionRef.doc().id;
   }
 
-  getPhotoWithId(String id) {
+  Future<DocumentSnapshot<Photo>> getPhotoWithId(String id) {
+    print('Requesting photo document with ID: $id');
     return _photoCollectionRef.doc(id).get();
+  }
+
+  Future<String?> getPhotoUrl(String photoId) async {
+    try {
+      var doc = await _photoCollectionRef.doc(photoId).get();
+      if (doc.exists) {
+        return doc.data()?.photo_url;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting photo URL: $e');
+      return null;
+    }
   }
 
   String getPhotoURLFromSupabase(String photo_id, dynamic supabase) {
     return supabase.storage.from('pet').createPublicUrl('uploads/$photo_id');
+  }
+
+  String getOrgLogoURLFromSupabase(String org_id, dynamic supabase) {
+    return supabase.storage.from('organization-logo').createPublicUrl('uploads/$org_id');
+  }
+
+  String getOrgDocURLFromSupabase(String org_id, dynamic supabase) {
+    return supabase.storage.from('organization_documents').createPublicUrl('uploads/$org_id');
   }
 }

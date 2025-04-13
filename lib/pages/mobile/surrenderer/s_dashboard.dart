@@ -5,6 +5,7 @@ import 'package:pawsmatch/services/firebase_profile_service.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/pages/mobile/surrenderer/surrender_pet.dart';
 import 'package:pawsmatch/pages/mobile/surrenderer/organizations_listing.dart'; // Add this import
+import 'package:pawsmatch/pages/mobile/surrenderer/surrender_history.dart'; // Add this import
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SurrendererDashboard extends StatefulWidget {
@@ -400,58 +401,43 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
                       Positioned(
                         left: 26,
                         top: 120,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: ShapeDecoration(
-                            color: const Color(0xFF212121),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4)),
-                          ),
-                          child: Text(
-                            'VIEW SURRENDER HISTORY',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w700,
-                              height: 1.14,
-                              letterSpacing: 1.25,
+                        child: GestureDetector(
+                          onTap: () {
+                            // Navigate to History tab when this button is clicked
+                            setState(() {
+                              _selectedIndex = 2; // Switch to History tab
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFF212121),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4)),
+                            ),
+                            child: Text(
+                              'VIEW SURRENDER HISTORY',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontFamily: 'DM Sans',
+                                fontWeight: FontWeight.w700,
+                                height: 1.14,
+                                letterSpacing: 1.25,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16.0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => SurrenderForm()),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF725F63),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Surrender Pet',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
+                ),                
               ],
             ),
           ),
         );
       case 2: // Surrender History
-        return const Center(child: Text('Surrender History'));
+        return const SurrenderHistory(showAppBar: false); // Use SurrenderHistory with showAppBar set to false
       default:
         return const Center(child: Text('Home'));
     }
