@@ -204,14 +204,14 @@ class FirebaseOrganizationService {
         email: "contact@happypaws.org",
         landline: "(02) 8123-4567",
         logo_url: "https://placehold.co/70x70?text=HP",
-        contact_numbers: {
-          "Main": "+63 912 345 6789",
-          "Emergency": "+63 998 765 4321"
-        },
-        social_media_links: {
-          "facebook": "https://facebook.com/happypaws",
-          "instagram": "https://instagram.com/happypaws"
-        }
+        contact_numbers: [
+          "+63 912 345 6789",
+          "+63 998 765 4321"
+        ],
+        social_media_links: [
+          "https://facebook.com/happypaws",
+          "https://instagram.com/happypaws"
+        ]
       ),
       Organization(
         org_id: "mock2",
@@ -230,14 +230,14 @@ class FirebaseOrganizationService {
         email: "info@secondchance.org",
         landline: "(02) 8765-4321",
         logo_url: "https://placehold.co/70x70?text=SC",
-        contact_numbers: {
-          "Office": "+63 932 109 8765", 
-          "Rescue Hotline": "+63 917 765 4321"
-        },
-        social_media_links: {
-          "facebook": "https://facebook.com/secondchance",
-          "twitter": "https://twitter.com/secondchance"
-        }
+        contact_numbers: [
+          "+63 912 345 6789",
+          "+63 998 765 4321"
+        ],
+        social_media_links: [
+          "https://facebook.com/happypaws",
+          "https://instagram.com/happypaws"
+        ]
       ),
     ];
   }

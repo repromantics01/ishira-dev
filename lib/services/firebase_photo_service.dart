@@ -66,4 +66,12 @@ class FirebasePhotoService {
   String getPhotoURLFromSupabase(String photo_id, dynamic supabase) {
     return supabase.storage.from('pet').createPublicUrl('uploads/$photo_id');
   }
+
+  String getOrgLogoURLFromSupabase(String org_id, dynamic supabase) {
+    return supabase.storage.from('organization-logo').createPublicUrl('uploads/$org_id');
+  }
+
+  String getOrgDocURLFromSupabase(String org_id, dynamic supabase) {
+    return supabase.storage.from('organization_documents').createPublicUrl('uploads/$org_id');
+  }
 }
