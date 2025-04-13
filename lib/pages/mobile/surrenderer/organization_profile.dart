@@ -12,10 +12,14 @@ class OrganizationProfile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final rectangleWidth = screenWidth - 48; // 24px padding on each side
 
     // Debug: Print logo URL to verify it's not null or empty
     print('Organization logo URL: ${organization.logo_url}');
 
+    // Add debugging for the organization object
+    print('Organization data: ${organization.toJson()}');
+    
     return Scaffold(
       body: SingleChildScrollView(
         child: Container(
@@ -237,6 +241,7 @@ class OrganizationProfile extends StatelessWidget {
                 ),
               ),
 
+              // About Us section with minimum height and consistent width
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -250,6 +255,10 @@ class OrganizationProfile extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 15),
                           child: Container(
+                            width: rectangleWidth,
+                            constraints: BoxConstraints(
+                              minHeight: 150, // Minimum height for the "About" box
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEDEDED),
                               borderRadius: BorderRadius.circular(12),
@@ -280,6 +289,8 @@ class OrganizationProfile extends StatelessWidget {
                               ),
                               child: Text(
                                 'About Us',
+                                overflow: TextOverflow.ellipsis, // Prevent wrapping
+                                maxLines: 1, // Force single line
                                 style: TextStyle(
                                   color: const Color(0xFF545454),
                                   fontSize: 18,
@@ -297,16 +308,22 @@ class OrganizationProfile extends StatelessWidget {
 
               //SizedBox(height: 15),
 
-              // Mission section
+              // Mission section with consistent width and non-wrapping title
               Column(
                 children: [
-                  Text(
-                  'Our Mission',
-                  style: TextStyle(
-                    color: const Color(0xFF545454),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  Container(
+                    width: rectangleWidth - 48, // Account for the existing padding
+                    child: Text(
+                      'Our Mission',
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis, // Prevent wrapping
+                      maxLines: 1, // Force single line
+                      style: TextStyle(
+                        color: const Color(0xFF545454),
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                   SizedBox(height: 16),
                   Padding(
@@ -314,22 +331,26 @@ class OrganizationProfile extends StatelessWidget {
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Pink rectangle behind the mission box
+                        // Pink rectangle behind the mission box with consistent width
                         Positioned(
                           bottom: -25,
                           left: -15,
                           right: -15,
                           child: Container(
                             height: 150,
-                            width: 100,
+                            width: rectangleWidth,
                             decoration: BoxDecoration(
                               color: const Color(0xFFECC8C0),
                               borderRadius: BorderRadius.circular(15),
                             ),
                           ),
                         ),
-                        // Mission description box
+                        // Mission description box with consistent width
                         Container(
+                          width: rectangleWidth,
+                          constraints: BoxConstraints(
+                            minHeight: 100, // Minimum height for mission box
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black,
                             borderRadius: BorderRadius.circular(12),
@@ -468,10 +489,10 @@ class OrganizationProfile extends StatelessWidget {
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // Teal rectangle behind the contact box (positioned to lower left)
+                        // Teal rectangle behind the contact box (positioned to lower right)
                         Positioned(
                           bottom: -15,
-                          left: -15,
+                          right: -15,
                           child: Container(
                             height: 120,
                             width: 150,
@@ -499,52 +520,18 @@ class OrganizationProfile extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (organization.email != null)
-                                RichText(
-                                  text: TextSpan(
-                                    children: [
-                                      TextSpan(
-                                        text: 'Email: ',
-                                        style: TextStyle(
-                                          color: const Color(0xFF545454),
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      TextSpan(
-                                        text: organization.email,
-                                        style: TextStyle(
-                                          color: const Color(0xFF545454),
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                _buildContactItem(
+                                  Icons.email_outlined,
+                                  'Email',
+                                  organization.email!,
                                 ),
-                              SizedBox(height: 8),
                               if (organization.landline != null)
-                                RichText(
-                                  text: TextSpan(
-                                    children: [
-                                      TextSpan(
-                                        text: 'Landline: ',
-                                        style: TextStyle(
-                                          color: const Color(0xFF545454),
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      TextSpan(
-                                        text: organization.landline,
-                                        style: TextStyle(
-                                          color: const Color(0xFF545454),
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                _buildContactItem(
+                                  Icons.phone,
+                                  'Landline',
+                                  organization.landline!,
                                 ),
-                              SizedBox(height: 8),
-                              // Contact numbers
+                              // Contact numbers section - improved with icons and proper parsing
                               if (organization.contact_numbers != null &&
                                   organization.contact_numbers!.isNotEmpty)
                                 Column(
@@ -558,19 +545,24 @@ class OrganizationProfile extends StatelessWidget {
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    ...organization.contact_numbers!.entries
-                                        .map((entry) => Padding(
-                                              padding: const EdgeInsets.only(
-                                                  left: 16, top: 4),
-                                              child: Text(
-                                                "${entry.key}: ${entry.value}",
-                                                style: TextStyle(
-                                                  color: const Color(0xFF545454),
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                            ))
-                                        .toList(),
+                                    SizedBox(height: 8),
+                                    ...organization.contact_numbers!
+                                      .map((contactEntry) {
+                                        // Parse contact entry in format "label: number"
+                                        final parts = contactEntry.split(':');
+                                        if (parts.length < 2) return _buildContactItem(
+                                          Icons.phone_android,
+                                          'Contact',
+                                          contactEntry.trim(),
+                                        );
+                                        
+                                        return _buildContactItem(
+                                          _getContactIcon(parts[0].trim().toLowerCase()),
+                                          parts[0].trim(),
+                                          parts.sublist(1).join(':').trim(),
+                                        );
+                                      })
+                                      .toList(),
                                   ],
                                 ),
                             ],
@@ -581,30 +573,44 @@ class OrganizationProfile extends StatelessWidget {
 
                     SizedBox(height: 30),
 
-                    // Social Media section
-                    if (organization.social_media_links != null &&
-                        organization.social_media_links!.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: Text(
-                              'Social Media',
+                    // Social Media section - with proper icons and styling
+                    Builder(
+                      builder: (context) {
+                        // Debug print for social media links
+                        print('Social media links: ${organization.social_media_links}');
+                        
+                        if (organization.social_media_links == null || 
+                            organization.social_media_links!.isEmpty) {
+                          print('No social media links found or empty list');
+                          return SizedBox.shrink(); // Don't show section
+                        }
+                        
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Connect With Us',
                               style: TextStyle(
                                 color: const Color(0xFF545454),
-                                fontSize: 16,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                          ),
-                          SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: _buildSocialMediaIcons(organization),
-                          ),
-                        ],
-                      ),
+                            SizedBox(height: 16),
+                            Container(
+                              height: 90,
+                              child: Center(
+                                child: ListView(
+                                  shrinkWrap: true,
+                                  scrollDirection: Axis.horizontal,
+                                  children: _buildSocialMediaIcons(organization),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -692,62 +698,277 @@ class OrganizationProfile extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildSocialMediaIcons(Organization organization) {
+  List<Widget> _buildSimpleSocialMediaIcons(Organization organization) {
+    // Debugging
     if (organization.social_media_links == null) {
+      print('Social media links are null');
       return [];
     }
+    
+    if (organization.social_media_links!.isEmpty) {
+      print('Social media links list is empty');
+      return [];
+    }
+    
+    // Print all entries for debugging
+    organization.social_media_links!.forEach((entry) {
+      print('Social link: $entry');
+    });
 
     final socialIcons = {
       'facebook': Icons.facebook,
       'instagram': Icons.camera_alt,
-      'twitter': Icons.flutter_dash, // Using flutter_dash as Twitter/X
+      'twitter': Icons.flutter_dash,
       'x': Icons.flutter_dash,
       'tiktok': Icons.music_note,
-      'youtube': Icons.play_arrow,
-    };
-
-    final socialLabels = {
-      'facebook': 'Facebook',
-      'instagram': 'Instagram',
-      'twitter': 'Twitter',
-      'x': 'X',
-      'tiktok': 'TikTok',
-      'youtube': 'YouTube',
+      'youtube': Icons.play_circle_filled,
+      'linkedin': Icons.link,
+      'pinterest': Icons.push_pin,
     };
 
     List<Widget> socialWidgets = [];
 
-    organization.social_media_links!.forEach((platform, url) {
-      final lowercasePlatform = platform.toLowerCase();
-
+    for (String entry in organization.social_media_links!) {
+      // Parse the platform and URL from the string (format: "platform: url")
+      List<String> parts = entry.split(':');
+      if (parts.length < 2) continue; // Skip malformed entries
+      
+      final platform = parts[0].trim().toLowerCase();
+      final url = parts.sublist(1).join(':').trim(); // Join the rest in case URL contains colons
+      
+      // Skip empty URLs
+      if (url.isEmpty) {
+        print('Empty URL for platform: $platform');
+        continue;
+      }
+      
+      print('Adding icon for: $platform');
+      
       socialWidgets.add(Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.grey[200],
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: InkWell(
+          onTap: () {
+            // Future: Add URL launching functionality
+            print('Would launch URL: $url');
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.grey[200],
+                ),
+                child: Icon(
+                  socialIcons[platform] ?? Icons.link,
+                  color: Color(0xFF725F63),
+                  size: 24,
+                ),
               ),
-              child: Icon(
-                socialIcons[lowercasePlatform] ?? Icons.link,
-                color: Color(0xFF725F63),
+              SizedBox(height: 4),
+              Text(
+                _capitalizeFirstLetter(platform),
+                style: TextStyle(
+                  color: const Color(0xFF545454),
+                  fontSize: 12,
+                ),
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              socialLabels[lowercasePlatform] ?? platform,
-              style: TextStyle(
-                color: const Color(0xFF545454),
-                fontSize: 13,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ));
-    });
+    }
+
+    // If no valid social links were found
+    if (socialWidgets.isEmpty) {
+      return [
+        Center(
+          child: Text(
+            'No social media links available',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        )
+      ];
+    }
+
+    return socialWidgets;
+  }
+  
+  String _capitalizeFirstLetter(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1);
+  }
+
+  // Helper method to build contact items with icons
+  Widget _buildContactItem(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F2F2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: const Color(0xFF725F63),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: const Color(0xFF545454),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: const Color(0xFF545454),
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Helper to determine contact icon based on label
+  IconData _getContactIcon(String labelLower) {
+    if (labelLower.contains('mobile') || 
+        labelLower.contains('phone') || 
+        labelLower.contains('cell')) {
+      return Icons.phone_android;
+    } else if (labelLower.contains('emergency')) {
+      return Icons.emergency;
+    } else if (labelLower.contains('fax')) {
+      return Icons.print;
+    } else if (labelLower.contains('office')) {
+      return Icons.business;
+    } else if (labelLower.contains('main')) {
+      return Icons.phone;
+    }
+    return Icons.contact_phone;
+  }
+
+  List<Widget> _buildSocialMediaIcons(Organization organization) {
+    if (organization.social_media_links == null || 
+        organization.social_media_links!.isEmpty) {
+      return [];
+    }
+    
+    // Map platform names to their corresponding icons and colors
+    final socialIcons = {
+      'facebook': Icons.facebook,
+      'instagram': Icons.camera_alt,
+      'twitter': Icons.flutter_dash,
+      'x': Icons.flutter_dash,
+    };
+    
+    // Map platform names to brand colors
+    final socialColors = {
+      'facebook': const Color(0xFF1877F2),
+      'instagram': const Color(0xFFE4405F),
+      'twitter': const Color(0xFF1DA1F2),
+      'x': const Color(0xFF000000),
+      'tiktok': const Color(0xFF000000),
+      'youtube': const Color(0xFFFF0000),
+      'linkedin': const Color(0xFF0A66C2),
+      'pinterest': const Color(0xFFE60023),
+      'web': const Color(0xFF34A853),
+      'website': const Color(0xFF34A853),
+    };
+
+    List<Widget> socialWidgets = [];
+
+    for (String entry in organization.social_media_links!) {
+      List<String> parts = entry.split(':');
+      if (parts.length < 2) continue; // Skip malformed entries
+      
+      final platform = parts[0].trim().toLowerCase();
+      final url = parts.sublist(1).join(':').trim();
+      
+      if (url.isEmpty) continue;
+      
+      socialWidgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: socialColors[platform] ?? const Color(0xFF725F63),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    socialIcons[platform] ?? Icons.link,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                  onPressed: () {
+                    // TODO: Implement URL launching
+                    print('Would launch URL: $url');
+                  },
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                _capitalizeFirstLetter(platform),
+                style: TextStyle(
+                  color: const Color(0xFF545454),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (socialWidgets.isEmpty) {
+      return [
+        Center(
+          child: Text(
+            'No social media links available',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        )
+      ];
+    }
 
     return socialWidgets;
   }

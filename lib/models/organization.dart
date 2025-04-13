@@ -9,7 +9,6 @@ class Organization {
   List<String> admin_ids;
   bool isVerified;
   
-  // Additional fields for organization profile
   String? location;
   String? address;
   String? about;
@@ -19,9 +18,9 @@ class Organization {
   String? weekend_hours;
   String? email;
   String? landline;
-  Map<String, String>? contact_numbers;
+  List<String>? contact_numbers;
   String? logo_url;
-  Map<String, String>? social_media_links;
+  List<String>? social_media_links;
 
   Organization({
     required this.org_id,
@@ -61,9 +60,9 @@ class Organization {
         weekend_hours = json['weekend_hours'] as String?,
         email = json['email'] as String?,
         landline = json['landline'] as String?,
-        contact_numbers = _parseMap(json['contact_numbers']),
+        contact_numbers = _parseContactNumbers(json['contact_numbers']),
         logo_url = json['logo_url'] as String?,
-        social_media_links = _parseMap(json['social_media_links']);
+        social_media_links = _parseSocialMediaLinks(json['social_media_links']);
 
   static DateTime _parseDateTime(dynamic value) {
     if (value is Timestamp) {
@@ -87,15 +86,45 @@ class Organization {
     return []; // Default empty list
   }
   
-  static Map<String, String>? _parseMap(dynamic value) {
+  // New parsing method for contact numbers
+  static List<String>? _parseContactNumbers(dynamic value) {
     if (value == null) return null;
+    
+    // Handle map format - convert to "label: value" strings
     if (value is Map) {
-      final result = <String, String>{};
+      final result = <String>[];
       value.forEach((key, val) {
-        result[key.toString()] = val.toString();
+        result.add("${key.toString()}: ${val.toString()}");
       });
       return result;
     }
+    
+    // Handle direct list format
+    if (value is List) {
+      return List<String>.from(value);
+    }
+    
+    return null;
+  }
+  
+  // New parsing method for social media links
+  static List<String>? _parseSocialMediaLinks(dynamic value) {
+    if (value == null) return null;
+    
+    // Handle map format - convert to "platform: url" strings
+    if (value is Map) {
+      final result = <String>[];
+      value.forEach((platform, url) {
+        result.add("${platform.toString()}: ${url.toString()}");
+      });
+      return result;
+    }
+    
+    // Handle direct list format
+    if (value is List) {
+      return List<String>.from(value);
+    }
+    
     return null;
   }
 
@@ -115,9 +144,10 @@ class Organization {
     String? weekend_hours,
     String? email,
     String? landline,
-    Map<String, String>? contact_numbers,
+    // Updated types
+    List<String>? contact_numbers,
     String? logo_url,
-    Map<String, String>? social_media_links,
+    List<String>? social_media_links,
   }) {
     return Organization(
       org_id: org_id ?? this.org_id,

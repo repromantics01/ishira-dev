@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pawsmatch/pages/mobile/surrenderer/pet_profile.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:pawsmatch/services/firebase_surrender_service.dart';
@@ -600,7 +601,12 @@ class _SurrenderHistoryState extends State<SurrenderHistory> {
                                                 Center(
                                                   child: ElevatedButton(
                                                     onPressed: () {
-                                                      // TODO: Implement viewing pet details
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) => PetProfile(petId: pet.pet_id),
+                                                        ),
+                                                      );
                                                     },
                                                     style: ElevatedButton.styleFrom(
                                                       backgroundColor: const Color(0xFF725F63),
