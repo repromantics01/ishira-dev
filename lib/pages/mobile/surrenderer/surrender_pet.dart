@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
@@ -126,83 +127,103 @@ class _SurrenderFormState extends State<SurrenderForm> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           insetPadding: EdgeInsets.symmetric(horizontal: 20),
-          child: SingleChildScrollView(
-            child: Container(
-              width: 335,
-              height: 620,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  // Dialog background
-                  Container(
-                    width: 335,
-                    height: 620,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFFEDEDED),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(38),
-                      ),
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Determine available space and adapt accordingly
+              final maxWidth = constraints.maxWidth;
+              final maxHeight = constraints.maxHeight;
+              
+              return Container(
+                width: maxWidth,
+                constraints: BoxConstraints(
+                  maxWidth: 400,
+                  maxHeight: maxHeight * 0.9, // Use 90% of available height max
+                ),
+                decoration: ShapeDecoration(
+                  color: const Color(0xFFEDEDED),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(38),
                   ),
-                  // Dialog content
-                  Column(
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(height: 25),
-                      // Pet image at top
-                      Container(
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          image: _petImages.isNotEmpty
-                              ? DecorationImage(
-                                  image: FileImage(_petImages[0]),
-                                  fit: BoxFit.cover,
-                                )
-                              : DecorationImage(
-                                  image: NetworkImage("https://placehold.co/150x150"),
-                                  fit: BoxFit.cover,
-                                ),
+                      // Pet image at the top with responsive size
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: maxWidth * 0.05, // Responsive padding
+                          horizontal: 16,
+                        ),
+                        child: Container(
+                          width: 150,
+                          height: 150,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
+                            image: _petImages.isNotEmpty
+                                ? DecorationImage(
+                                    image: FileImage(_petImages[0]),
+                                    fit: BoxFit.cover,
+                                  )
+                                : DecorationImage(
+                                    image: AssetImage('assets/images/pet_placeholder.png') as ImageProvider,
+                                    fit: BoxFit.cover,
+                                    onError: (exception, stackTrace) => Icon(
+                                      Icons.pets,
+                                      size: 60,
+                                      color: Color(0xFF725F63),
+                                    ),
+                                  ),
+                          ),
                         ),
                       ),
-                      SizedBox(height: 10),
-                      // Confirmation title
+                      
+                      // Confirmation question text with adaptive font size
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        padding: EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
                           'Are you sure you want to surrender ${_petNameController.text}?',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.black,
-                            fontSize: 23,
+                            fontSize: maxWidth < 300 ? 16 : 20, // Responsive font size
                             fontFamily: 'DM Sans',
                             fontWeight: FontWeight.w700,
-                            height: 1.22,
+                            height: 1.4,
                           ),
                         ),
                       ),
-                      SizedBox(height: 25),
-                      // Supporting text
-                      // Padding(
-                      //   padding: const EdgeInsets.symmetric(horizontal: 30),
-                      //   child: Text(
-                      //     'We understand that surrendering a pet is a difficult decision, and we appreciate the care you\'ve taken in making this choice.',
-                      //     textAlign: TextAlign.center,
-                      //     style: TextStyle(
-                      //       color: const Color(0xFF646464),
-                      //       fontSize: 13,
-                      //       fontFamily: 'DM Sans',
-                      //       fontWeight: FontWeight.w400,
-                      //       height: 1.62,
-                      //     ),
-                      //   ),
-                      // ),
-                      // SizedBox(height: 25),
-                      // Notice text
+                      
+                      SizedBox(height: 16),
+                      
+                      // Surrender commitment text with adaptive font size
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        padding: EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'We understand that surrendering a pet is a difficult decision, and we appreciate the care you\'ve taken in making this choice.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFF646464),
+                            fontSize: maxWidth < 300 ? 11 : 13, // Responsive font size
+                            fontFamily: 'DM Sans',
+                            fontWeight: FontWeight.w400,
+                            height: 1.6,
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(height: 24),
+                      
+                      // Confirmation details text
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24),
                         child: Text.rich(
                           TextSpan(
                             children: [
@@ -210,50 +231,30 @@ class _SurrenderFormState extends State<SurrenderForm> {
                                 text: 'By submitting pet details, you are permitting and notifying ',
                                 style: TextStyle(
                                   color: const Color(0xFF656565),
-                                  fontSize: 12,
+                                  fontSize: maxWidth < 300 ? 10 : 12, // Responsive font size
                                   fontFamily: 'DM Sans',
                                   fontWeight: FontWeight.w400,
                                   height: 1.75,
                                 ),
                               ),
                               TextSpan(
-                                text: _organizationName + ' ',
+                                text: '${_organizationName} ',
                                 style: TextStyle(
                                   color: const Color(0xFF656565),
-                                  fontSize: 12,
+                                  fontSize: maxWidth < 300 ? 10 : 12, // Responsive font size
                                   fontFamily: 'DM Sans',
                                   fontWeight: FontWeight.w700,
                                   height: 1.75,
                                 ),
                               ),
                               TextSpan(
-                                text: 'about your surrender request.\n\n',
+                                text: 'about your surrender request.',
                                 style: TextStyle(
                                   color: const Color(0xFF656565),
-                                  fontSize: 12,
+                                  fontSize: maxWidth < 300 ? 10 : 12, // Responsive font size
                                   fontFamily: 'DM Sans',
                                   fontWeight: FontWeight.w400,
                                   height: 1.75,
-                                ),
-                              ),
-                              TextSpan(
-                                text: 'You cannot modify nor revert once submitted.\n\n',
-                                style: TextStyle(
-                                  color: const Color(0xFF656565),
-                                  fontSize: 14,
-                                  fontFamily: 'DM Sans',
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.50,
-                                ),
-                              ),
-                              TextSpan(
-                                text: 'Proceed?',
-                                style: TextStyle(
-                                  color: const Color(0xFF656565),
-                                  fontSize: 14,
-                                  fontFamily: 'DM Sans',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.50,
                                 ),
                               ),
                             ],
@@ -261,70 +262,282 @@ class _SurrenderFormState extends State<SurrenderForm> {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      SizedBox(height: 30),
-                      // No button
-                      Container(
-                        width: 165,
-                        margin: EdgeInsets.only(bottom: 12),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop(); // Close dialog without submitting
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE0E0E0),
-                            foregroundColor: const Color(0xFF1E2C2B),
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(width: 1, color: const Color(0xFF8B8B8B)),
-                              borderRadius: BorderRadius.circular(250),
-                            ),
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                      
+                      SizedBox(height: 16),
+                      
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'You cannot modify nor revert once submitted.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFF656565),
+                            fontSize: maxWidth < 300 ? 12 : 14, // Responsive font size
+                            fontFamily: 'DM Sans',
+                            fontWeight: FontWeight.w700,
+                            height: 1.5,
                           ),
-                          child: Text(
-                            'NO',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1.25,
+                        ),
+                      ),
+                      
+                      SizedBox(height: 16),
+                      
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'Proceed?',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFF656565),
+                            fontSize: maxWidth < 300 ? 12 : 14, // Responsive font size
+                            fontFamily: 'DM Sans',
+                            fontWeight: FontWeight.w400,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      
+                      SizedBox(height: 24),
+                      
+                      // NO button
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              vertical: maxWidth < 300 ? 8 : 12, // Responsive padding
+                            ),
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFE0E0E0),
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(
+                                  width: 1,
+                                  color: const Color(0xFF8B8B8B),
+                                ),
+                                borderRadius: BorderRadius.circular(250),
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'NO',
+                                style: TextStyle(
+                                  color: const Color(0xFF1E2C2B),
+                                  fontSize: maxWidth < 300 ? 12 : 14, // Responsive font size
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.14,
+                                  letterSpacing: 1.25,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                      // Yes button
-                      Container(
-                        width: 165,
-                        margin: EdgeInsets.only(bottom: 20),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop(); // Close dialog
-                            submitPetDetails(); // Submit pet details
+                      
+                      // YES button
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            submitPetDetails();
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFC0D6B6),
-                            foregroundColor: const Color(0xFF1E2C2B),
-                            shape: RoundedRectangleBorder(
-                              side: BorderSide(width: 1, color: const Color(0xFF8B8B8B)),
-                              borderRadius: BorderRadius.circular(250),
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(
+                              vertical: maxWidth < 300 ? 8 : 12, // Responsive padding
                             ),
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: Text(
-                            'YES',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 1.25,
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFC0D6B6),
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(
+                                  width: 1,
+                                  color: const Color(0xFF8B8B8B),
+                                ),
+                                borderRadius: BorderRadius.circular(250),
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'YES',
+                                style: TextStyle(
+                                  color: const Color(0xFF1E2C2B),
+                                  fontSize: maxWidth < 300 ? 12 : 14, // Responsive font size
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.14,
+                                  letterSpacing: 1.25,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         );
       },
+    );
+  }
+
+  // New method to show success modal after surrender is complete
+  void _showSurrenderSuccessModal() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.symmetric(horizontal: 20),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Get available width
+            final maxWidth = min(335.0, constraints.maxWidth - 40);
+            
+            return Container(
+              width: maxWidth,
+              decoration: ShapeDecoration(
+                color: const Color(0xFFEDEDED),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(38),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Thank you image
+                  Padding(
+                    padding: const EdgeInsets.only(top: 25, bottom: 10),
+                    child: Image.asset(
+                      'assets/photos/thank_you.png',
+                      width: 150,
+                      height: 150,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback in case the image is missing
+                        return Container(
+                          width: 150,
+                          height: 150,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFECC8C0),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.volunteer_activism,
+                            size: 70,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  
+                  // Thank you text
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Text(
+                      'Thank You!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 23,
+                        fontFamily: 'DM Sans',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  
+                  // Success message
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 25),
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Your pet surrender information has been sent to ',
+                            style: TextStyle(
+                              color: const Color(0xFF646464),
+                              fontSize: 13,
+                              fontFamily: 'DM Sans',
+                              fontWeight: FontWeight.w400,
+                              height: 1.5,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '${_organizationName}. ',
+                            style: TextStyle(
+                              color: const Color(0xFF646464),
+                              fontSize: 13,
+                              fontFamily: 'DM Sans',
+                              fontWeight: FontWeight.w700,
+                              height: 1.5,
+                            ),
+                          ),
+                          TextSpan(
+                            text: 'They will reach out to you about the next steps.',
+                            style: TextStyle(
+                              color: const Color(0xFF646464),
+                              fontSize: 13,
+                              fontFamily: 'DM Sans',
+                              fontWeight: FontWeight.w400,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  
+                  // Close button
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 25),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        // Also navigate back to the previous screen after closing the dialog
+                        Navigator.of(context).pop();
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: ShapeDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(
+                              width: 1,
+                              color: const Color(0xFF8B8B8B),
+                            ),
+                            borderRadius: BorderRadius.circular(250),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'CLOSE',
+                            style: TextStyle(
+                              color: const Color(0xFF1E2C2B),
+                              fontSize: 14,
+                              fontFamily: 'DM Sans',
+                              fontWeight: FontWeight.w500,
+                              height: 1.14,
+                              letterSpacing: 1.25,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -369,8 +582,7 @@ class _SurrenderFormState extends State<SurrenderForm> {
       // Add the pet to the Firestore collection
       await _firebasePetService.addPet(pet);
 
-      // If the form was opened from an organization profile, create a surrender record
-      if (widget.organizationId != null) {
+     
         String? currentUserId = _auth.currentUser?.uid;
         if (currentUserId != null) {
           await _surrenderService.surrenderPetToOrganization(
@@ -379,22 +591,16 @@ class _SurrenderFormState extends State<SurrenderForm> {
             organizationId: widget.organizationId!,
           );
           
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Pet successfully surrendered to organization')),
-          );
+          // Show success modal instead of SnackBar
+          _showSurrenderSuccessModal();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: User not logged in')),
           );
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pet details submitted successfully')),
-        );
-      }
+       
 
-      // Reset form or navigate back
-      Navigator.pop(context);
+      // Don't navigate back immediately - let the user close the success modal
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

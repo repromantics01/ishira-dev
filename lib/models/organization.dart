@@ -19,8 +19,9 @@ class Organization {
   String? email;
   String? landline;
   List<String>? contact_numbers;
-  String? logo_url;
+  String? logo_url;  // Direct URL for quick access
   List<String>? social_media_links;
+  List<String>? photo_ids;  // References to photos collection
 
   Organization({
     required this.org_id,
@@ -39,8 +40,9 @@ class Organization {
     this.email,
     this.landline,
     this.contact_numbers,
-    this.logo_url,
+    this.logo_url,  // Direct URL for quick access
     this.social_media_links,
+    this.photo_ids,  // References to photos collection
   });
 
   Organization.fromJson(Map<String, dynamic> json)
@@ -62,7 +64,8 @@ class Organization {
         landline = json['landline'] as String?,
         contact_numbers = _parseContactNumbers(json['contact_numbers']),
         logo_url = json['logo_url'] as String?,
-        social_media_links = _parseSocialMediaLinks(json['social_media_links']);
+        social_media_links = _parseSocialMediaLinks(json['social_media_links']),
+        photo_ids = json['photo_ids'] != null ? List<String>.from(json['photo_ids']) : null; // Parse photo_ids from json
 
   static DateTime _parseDateTime(dynamic value) {
     if (value is Timestamp) {
@@ -144,10 +147,10 @@ class Organization {
     String? weekend_hours,
     String? email,
     String? landline,
-    // Updated types
     List<String>? contact_numbers,
-    String? logo_url,
+    String? logo_url,  // Direct URL for quick access
     List<String>? social_media_links,
+    List<String>? photo_ids,  // References to photos collection
   }) {
     return Organization(
       org_id: org_id ?? this.org_id,
@@ -166,8 +169,9 @@ class Organization {
       email: email ?? this.email,
       landline: landline ?? this.landline,
       contact_numbers: contact_numbers ?? this.contact_numbers,
-      logo_url: logo_url ?? this.logo_url,
+      logo_url: logo_url ?? this.logo_url,  // Direct URL for quick access
       social_media_links: social_media_links ?? this.social_media_links,
+      photo_ids: photo_ids ?? this.photo_ids,  // References to photos collection
     );
   }
 
@@ -189,8 +193,9 @@ class Organization {
       'email': email,
       'landline': landline,
       'contact_numbers': contact_numbers,
-      'logo_url': logo_url,
+      'logo_url': logo_url,  // Direct URL for quick access
       'social_media_links': social_media_links,
+      'photo_ids': photo_ids,  // References to photos collection
     };
   }
 }

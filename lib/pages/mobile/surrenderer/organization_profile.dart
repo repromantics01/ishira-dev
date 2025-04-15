@@ -2,23 +2,80 @@ import 'package:flutter/material.dart';
 import 'package:pawsmatch/models/organization.dart';
 import 'package:intl/intl.dart';
 import 'package:pawsmatch/pages/mobile/surrenderer/surrender_pet.dart';
+import 'package:pawsmatch/services/firebase_photo_service.dart';
+import 'package:pawsmatch/services/firebase_organization_service.dart';
 
-class OrganizationProfile extends StatelessWidget {
+class OrganizationProfile extends StatefulWidget {
   final Organization organization;
 
-  const OrganizationProfile({Key? key, required this.organization})
-      : super(key: key);
+  const OrganizationProfile({super.key, required this.organization});
+
+  @override
+  State<OrganizationProfile> createState() => _OrganizationProfileState();
+}
+
+class _OrganizationProfileState extends State<OrganizationProfile> {
+  final FirebasePhotoService _photoService = FirebasePhotoService();
+  final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
+  
+  final List<String> _photoUrls = [];
+  bool _isLoading = true;
+  int _currentPhotoIndex = 0;
+  final PageController _pageController = PageController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPhotos();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPhotos() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Remove logo from hero section - only use photos from photo_ids
+    if (widget.organization.photo_ids != null && widget.organization.photo_ids!.isNotEmpty) {
+      final additionalPhotos = await _photoService.getOrganizationPhotoUrls(
+        widget.organization.photo_ids
+      );
+      
+      if (additionalPhotos.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _photoUrls.addAll(additionalPhotos);
+          });
+        }
+      }
+    }
+
+    if (_photoUrls.isEmpty && widget.organization.logo_url != null) {
+      // Fallback to logo only if no photos are available
+      setState(() {
+        _photoUrls.add(widget.organization.logo_url!);
+      });
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final rectangleWidth = screenWidth - 48; // 24px padding on each side
-
-    // Debug: Print logo URL to verify it's not null or empty
-    print('Organization logo URL: ${organization.logo_url}');
+    final rectangleWidth = screenWidth - 48; 
 
     // Add debugging for the organization object
-    print('Organization data: ${organization.toJson()}');
+    print('Organization data: ${widget.organization.toJson()}');
     
     return Scaffold(
       body: SingleChildScrollView(
@@ -27,7 +84,7 @@ class OrganizationProfile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Hero image at the top with better error handling
+              // Hero image carousel at the top
               Stack(
                 children: [
                   Container(
@@ -35,56 +92,84 @@ class OrganizationProfile extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Color(0xFFD8CBCB), // Fallback color
                     ),
-                    child: organization.logo_url != null
-                        ? Image.network(
-                            organization.logo_url!,
-                            width: double.infinity,
-                            height: 390,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              // Log error and show placeholder
-                              print('Error loading organization logo: $error');
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.pets,
-                                      size: 100,
-                                      color: Color(0xFF725F63),
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'Image not available',
-                                      style: TextStyle(
-                                        color: Color(0xFF725F63),
-                                      ),
-                                    ),
-                                  ],
+                    child: _isLoading 
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF725F63)),
+                          ),
+                        )
+                      : _photoUrls.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.pets,
+                                  size: 100,
+                                  color: Color(0xFF725F63),
                                 ),
-                              );
-                            },
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes !=
-                                          null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Color(0xFF725F63)),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No images available',
+                                  style: TextStyle(
+                                    color: Color(0xFF725F63),
+                                  ),
                                 ),
-                              );
-                            },
-                          )
-                        : Center(
-                            child: Icon(
-                              Icons.pets,
-                              size: 100,
-                              color: Color(0xFF725F63),
+                              ],
                             ),
+                          )
+                        : PageView.builder(
+                            controller: _pageController,
+                            itemCount: _photoUrls.length,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentPhotoIndex = index;
+                              });
+                            },
+                            itemBuilder: (context, index) {
+                              return Image.network(
+                                _photoUrls[index],
+                                width: double.infinity,
+                                height: 390,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  print('Error loading image: $error');
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.broken_image,
+                                          size: 50,
+                                          color: Color(0xFF725F63),
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'Image failed to load',
+                                          style: TextStyle(
+                                            color: Color(0xFF725F63),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: CircularProgressIndicator(
+                                      value: loadingProgress.expectedTotalBytes !=
+                                              null
+                                          ? loadingProgress.cumulativeBytesLoaded /
+                                              loadingProgress.expectedTotalBytes!
+                                          : null,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Color(0xFF725F63)),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
                           ),
                   ),
                   // Back button with transparent background
@@ -102,27 +187,38 @@ class OrganizationProfile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Image pagination dots
+                  // Image pagination dots - now reflecting actual number of photos
                   Positioned(
                     bottom: 20,
                     left: 0,
                     right: 0,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        5,
-                        (index) => Container(
-                          width: 8,
-                          height: 8,
-                          margin: EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: index == 1
-                                ? Color(0xFF686868)
-                                : Colors.black.withOpacity(0.1),
+                      children: _photoUrls.isEmpty
+                        ? []
+                        : List.generate(
+                            _photoUrls.length,
+                            (index) => GestureDetector(
+                              onTap: () {
+                                _pageController.animateToPage(
+                                  index,
+                                  duration: Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              },
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                margin: EdgeInsets.symmetric(horizontal: 4),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: index == _currentPhotoIndex
+                                      ? Color(0xFF686868)
+                                      : Colors.white.withOpacity(0.5),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -139,7 +235,7 @@ class OrganizationProfile extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            organization.org_name,
+                            widget.organization.org_name,
                             style: TextStyle(
                               color: const Color(0xFF545454),
                               fontSize: 30,
@@ -157,14 +253,35 @@ class OrganizationProfile extends StatelessWidget {
                               ),
                               SizedBox(width: 4),
                               Expanded(
-                                child: Text(
-                                  "${organization.location ?? 'Location not specified'}${organization.address != null ? ', ${organization.address}' : ''}",
-                                  style: TextStyle(
-                                    color: const Color(0xFF545454),
-                                    fontSize: 16,
-                                    fontStyle: FontStyle.italic,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Display location on first line
+                                    Text(
+                                      "${widget.organization.location ?? 'Location not specified'}",
+                                      style: TextStyle(
+                                        color: const Color(0xFF545454),
+                                        fontSize: 16,
+                                        fontStyle: FontStyle.italic,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                    // Display address on second line if available
+                                    if (widget.organization.address != null && 
+                                        widget.organization.address!.isNotEmpty) 
+                                      Text(
+                                        widget.organization.address!,
+                                        style: TextStyle(
+                                          color: const Color(0xFF545454),
+                                          fontSize: 14,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 2,
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -209,11 +326,11 @@ class OrganizationProfile extends StatelessWidget {
                         ),
                         color: Color(0xFFD8CBCB), // Fallback color
                       ),
-                      child: organization.logo_url != null
+                      child: widget.organization.logo_url != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(35),
                               child: Image.network(
-                                organization.logo_url!,
+                                widget.organization.logo_url!,
                                 width: 70,
                                 height: 70,
                                 fit: BoxFit.cover,
@@ -265,7 +382,7 @@ class OrganizationProfile extends StatelessWidget {
                             ),
                             padding: const EdgeInsets.fromLTRB(16, 40, 16, 25),
                             child: Text(
-                              organization.about ?? 'No information provided.',
+                              widget.organization.about ?? 'No information provided.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: const Color(0xFF545454),
@@ -357,7 +474,7 @@ class OrganizationProfile extends StatelessWidget {
                           ),
                           padding: const EdgeInsets.fromLTRB(16, 25, 16, 25),
                           child: Text(
-                            organization.mission ??
+                            widget.organization.mission ??
                               'No mission statement provided.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -390,12 +507,12 @@ class OrganizationProfile extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: 16),
-                    if (organization.services != null &&
-                        organization.services!.isNotEmpty)
+                    if (widget.organization.services != null &&
+                        widget.organization.services!.isNotEmpty)
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: organization.services!
+                        children: widget.organization.services!
                             .map((service) => Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 12),
@@ -448,7 +565,7 @@ class OrganizationProfile extends StatelessWidget {
                     SizedBox(height: 16),
                     Center(
                       child: Text(
-                        'Weekdays: ${organization.weekday_hours ?? 'Not specified'}',
+                        'Weekdays: ${widget.organization.weekday_hours ?? 'Not specified'}',
                         style: TextStyle(
                           color: const Color(0xFF545454),
                           fontSize: 16,
@@ -458,7 +575,7 @@ class OrganizationProfile extends StatelessWidget {
                     SizedBox(height: 8),
                     Center(
                       child: Text(
-                        'Weekends: ${organization.weekend_hours ?? 'Not specified'}',
+                        'Weekends: ${widget.organization.weekend_hours ?? 'Not specified'}',
                         style: TextStyle(
                           color: const Color(0xFF545454),
                           fontSize: 16,
@@ -519,21 +636,21 @@ class OrganizationProfile extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (organization.email != null)
+                              if (widget.organization.email != null)
                                 _buildContactItem(
                                   Icons.email_outlined,
                                   'Email',
-                                  organization.email!,
+                                  widget.organization.email!,
                                 ),
-                              if (organization.landline != null)
+                              if (widget.organization.landline != null)
                                 _buildContactItem(
                                   Icons.phone,
                                   'Landline',
-                                  organization.landline!,
+                                  widget.organization.landline!,
                                 ),
                               // Contact numbers section - improved with icons and proper parsing
-                              if (organization.contact_numbers != null &&
-                                  organization.contact_numbers!.isNotEmpty)
+                              if (widget.organization.contact_numbers != null &&
+                                  widget.organization.contact_numbers!.isNotEmpty)
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -546,7 +663,7 @@ class OrganizationProfile extends StatelessWidget {
                                       ),
                                     ),
                                     SizedBox(height: 8),
-                                    ...organization.contact_numbers!
+                                    ...widget.organization.contact_numbers!
                                       .map((contactEntry) {
                                         // Parse contact entry in format "label: number"
                                         final parts = contactEntry.split(':');
@@ -577,10 +694,10 @@ class OrganizationProfile extends StatelessWidget {
                     Builder(
                       builder: (context) {
                         // Debug print for social media links
-                        print('Social media links: ${organization.social_media_links}');
+                        print('Social media links: ${widget.organization.social_media_links}');
                         
-                        if (organization.social_media_links == null || 
-                            organization.social_media_links!.isEmpty) {
+                        if (widget.organization.social_media_links == null || 
+                            widget.organization.social_media_links!.isEmpty) {
                           print('No social media links found or empty list');
                           return SizedBox.shrink(); // Don't show section
                         }
@@ -603,7 +720,7 @@ class OrganizationProfile extends StatelessWidget {
                                 child: ListView(
                                   shrinkWrap: true,
                                   scrollDirection: Axis.horizontal,
-                                  children: _buildSocialMediaIcons(organization),
+                                  children: _buildSocialMediaIcons(widget.organization),
                                 ),
                               ),
                             ),
@@ -659,7 +776,7 @@ class OrganizationProfile extends StatelessWidget {
                             context, 
                             MaterialPageRoute(
                               builder: (context) => SurrenderForm(
-                                organizationId: organization.org_id,
+                                organizationId: widget.organization.org_id,
                               ),
                             ),
                           );

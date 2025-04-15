@@ -177,6 +177,7 @@ class _SurrenderHistoryState extends State<SurrenderHistory> {
               ),
             )
           : null,
+      backgroundColor: const Color(0xFFFEF5F0),
       body: userId == null
           ? Center(
               child: Text(
