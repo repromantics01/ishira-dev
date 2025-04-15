@@ -44,23 +44,18 @@ class FirebaseSurrenderService {
     required String organizationId
   }) async {
     try {
-      // Create a new surrender object
+      
+      DocumentReference docRef = _surrenderCollectionRef.doc();
       final Surrender surrenderRecord = Surrender(
-        surrender_id: _surrenderCollectionRef.doc().id,
+        surrender_id: docRef.id,
         pet_id: petId,
         account_id: accountId,
         org_id: organizationId,
-        surrender_status: SurrenderStatus.Pending, // Initial status as pending
+        surrender_status: SurrenderStatus.Pending, 
         date_surrendered: DateTime.now(),
       );
       
-      // Add the surrender record to Firestore
-      DocumentReference docRef = await _surrenderCollectionRef.add(surrenderRecord);
-      
-      // Log the successful surrender
-      print('Pet successfully surrendered. Surrender ID: ${docRef.id}');
-      
-      // Return the ID of the newly created surrender document
+     await docRef.set(surrenderRecord);
       return docRef.id;
     } catch (e) {
       print('Error surrendering pet to organization: $e');

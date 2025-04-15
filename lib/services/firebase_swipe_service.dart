@@ -38,7 +38,7 @@ class FirebaseSwipeService {
         'pet_id': petId,
         'liked': liked,
         'timestamp': FieldValue.serverTimestamp(),
-        'isActive': 'true' // Add this to match the Swipe model
+        'isActive': 'true' // Set to active by default
       });
       
       return true;
@@ -48,7 +48,6 @@ class FirebaseSwipeService {
     }
   }
 
-  // Get all swipes for the current user
   Future<List<Map<String, dynamic>>> getCurrentUserSwipes() async {
     try {
       final User? user = _auth.currentUser;
@@ -81,6 +80,7 @@ class FirebaseSwipeService {
           .collection(SWIPE_COLLECTION_REF)
           .where('account_id', isEqualTo: user.uid)
           .where('liked', isEqualTo: true)
+          .where('isActive', isEqualTo: 'true') 
           .get();
 
       return swipesSnapshot.docs
@@ -89,6 +89,31 @@ class FirebaseSwipeService {
     } catch (e) {
       print('Error fetching liked pet IDs: $e');
       return [];
+    }
+  }
+
+  // New method to set a swipe as inactive when pet is adopted
+  Future<bool> setSwipeInactive(String petId) async {
+    try {
+      final User? user = _auth.currentUser;
+      if (user == null) return false;
+      
+      // Find swipe documents matching the user and pet
+      final swipesSnapshot = await _firestore
+          .collection(SWIPE_COLLECTION_REF)
+          .where('account_id', isEqualTo: user.uid)
+          .where('pet_id', isEqualTo: petId)
+          .get();
+      
+      // Update all matching swipes to inactive
+      for (var doc in swipesSnapshot.docs) {
+        await doc.reference.update({'isActive': 'false'});
+      }
+      
+      return true;
+    } catch (e) {
+      print('Error setting swipe inactive: $e');
+      return false;
     }
   }
 
