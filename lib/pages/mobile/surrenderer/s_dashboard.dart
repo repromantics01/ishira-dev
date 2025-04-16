@@ -447,6 +447,7 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFFFEF5F0),
         automaticallyImplyLeading: false,
         actions: [
           // Inbox icon
@@ -478,8 +479,10 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
         ],
         elevation: 0,
       ),
+      backgroundColor: const Color(0xFFFEF5F0),
       body: _getBody(),
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: const Color(0xFFFEF5F0),
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.business),

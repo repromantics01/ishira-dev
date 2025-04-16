@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Add this import for SystemUiOverlayStyle
+import 'package:flutter/services.dart';
 import 'package:pawsmatch/models/pet.dart';
 import 'package:pawsmatch/pages/mobile/adopter/swipe_pet_details.dart';
+import 'package:pawsmatch/services/firebase_adopt_service.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pawsmatch/services/firebase_swipe_service.dart'; // Add this import
 import 'dart:math';
 
 class PetSwiperPage extends StatefulWidget {
@@ -16,17 +16,18 @@ class PetSwiperPage extends StatefulWidget {
 
 class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateMixin {
   final FirebasePetService _petService = FirebasePetService();
+  final FirebaseSwipeService _swipeService = FirebaseSwipeService(); // Add this
   
   List<Pet> _pets = [];
   bool _isLoading = true;
   int _currentIndex = 0;
   
-  // Animation controllers
   late AnimationController _swipeController;
   late AnimationController _progressController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _rotationAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _nextCardScaleAnimation;
   
   // Swipe state tracking
   Offset _dragOffset = Offset.zero;
@@ -36,6 +37,7 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
   
   // Screen width for calculations
   double _screenWidth = 0;
+  double _screenHeight = 0;
 
   // Track if a swipe animation is in progress
   bool _isAnimating = false;
@@ -50,37 +52,45 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
     
     // Initialize animation controllers
     _swipeController = AnimationController(
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     
     _progressController = AnimationController(
-      duration: Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     )..repeat(reverse: true);
     
     _slideAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: Offset(1.5, 0.0),
+      end: const Offset(1.5, 0.0),
     ).animate(CurvedAnimation(
       parent: _swipeController,
-      curve: Curves.easeOut,
+      curve: Curves.easeOutBack,
     ));
     
     _rotationAnimation = Tween<double>(
       begin: 0.0,
-      end: 0.1,
+      end: 0.3,  // Increased rotation for more visual appeal
     ).animate(CurvedAnimation(
       parent: _swipeController,
-      curve: Curves.easeOut,
+      curve: Curves.easeOutCubic,
     ));
     
     _scaleAnimation = Tween<double>(
-      begin: 0.9,
-      end: 1.0,
+      begin: 1.0,
+      end: 0.8,  // Card scales down slightly as it swipes away
     ).animate(CurvedAnimation(
       parent: _swipeController,
-      curve: Curves.easeOut,
+      curve: Curves.easeOutCubic,
+    ));
+    
+    _nextCardScaleAnimation = Tween<double>(
+      begin: 0.95,
+      end: 1.0,  // Next card scales up as current card swipes away
+    ).animate(CurvedAnimation(
+      parent: _swipeController,
+      curve: Curves.easeOutCubic,
     ));
     
     _loadPets();
@@ -99,11 +109,32 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
     });
 
     try {
-      // Get multiple pets to swipe through
-      final pets = await _petService.getPets(limit: 10);
+      // Get IDs of pets the user has already liked
+      final likedPetIds = await _swipeService.getCurrentUserLikedPetIds();
+      
+      // Get IDs of pets for which the user has active adoption requests
+      final FirebaseAdoptService _adoptService = FirebaseAdoptService();
+      final adoptionRequestPetIds = await _adoptService.getCurrentUserAdoptionRequestPetIds();
+      
+      // Get a large batch of pets to filter and shuffle
+      final allPets = await _petService.getPets(limit: 50);
+      
+      // Filter out both liked pets and pets with adoption requests
+      final availablePets = allPets.where((pet) => 
+        !likedPetIds.contains(pet.pet_id) && 
+        !adoptionRequestPetIds.contains(pet.pet_id)
+      ).toList();
+      
+      // Randomize the order of pets
+      if (availablePets.isNotEmpty) {
+        availablePets.shuffle(Random());
+      }
+      
+      // Take a smaller subset for better performance
+      final displayPets = availablePets.take(15).toList();
       
       setState(() {
-        _pets = pets;
+        _pets = displayPets;
         _isLoading = false;
       });
     } catch (e) {
@@ -115,51 +146,37 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
     }
   }
 
-  void _handleSwipeLeft() async {
-    if (_isAnimating) return; // Prevent multiple animations
+    void _handleSwipeLeft() {
+    if (_isAnimating) return;
+    
+    final currentPet = _pets[_currentIndex];
     
     setState(() {
       _isAnimating = true;
       _showPreviousPet = true;
-      _previousPet = _pets[_currentIndex]; // Store current pet as previous
+      _previousPet = currentPet;
+      // Save the current drag offset for the animation
+      _slideAnimation = Tween<Offset>(
+        begin: _dragOffset,
+        end: Offset(-2.0, -0.3),
+      ).animate(CurvedAnimation(
+        parent: _swipeController,
+        curve: Curves.easeOutCubic,
+      ));
     });
-    
-    // Set the end position for the swipe animation - fix direction to match gesture
-    _slideAnimation = Tween<Offset>(
-      begin: _dragOffset,
-      end: Offset(-2.0, 0.0), // Keep this direction for left swipe
-    ).animate(CurvedAnimation(
-      parent: _swipeController,
-      curve: Curves.easeOut,
-    ));
 
-    // Trigger the animation
-    await _swipeController.forward();
-    
-    // First update UI to show next pet before any async operations
-    if (_currentIndex < _pets.length - 1) {
-      setState(() {
-        _currentIndex++;
-        _dragOffset = Offset.zero;
-        _isDragging = false;
-        _isSwipingLeft = false;
-      });
-    } else {
-      // No more pets
-      setState(() {
-        _dragOffset = Offset.zero;
-        _isDragging = false;
-        _isSwipingLeft = false;
-      });
-    }
-    
-    // Now record the swipe in the background
     _recordSwipe(false);
+    _swipeController.forward();
     
-    // Clean up animation state after a short delay to ensure smooth transition
     Future.delayed(Duration(milliseconds: 300), () {
       if (mounted) {
         setState(() {
+          if (_currentIndex < _pets.length - 1) {
+            _currentIndex++;
+          }
+          _dragOffset = Offset.zero;
+          _isDragging = false;
+          _isSwipingLeft = false;
           _showPreviousPet = false;
           _isAnimating = false;
         });
@@ -168,51 +185,38 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
     });
   }
 
-  void _handleSwipeRight() async {
-    if (_isAnimating) return; // Prevent multiple animations
+  void _handleSwipeRight() {
+    if (_isAnimating) return;
+    
+    final currentPet = _pets[_currentIndex];
     
     setState(() {
       _isAnimating = true;
       _showPreviousPet = true;
-      _previousPet = _pets[_currentIndex]; // Store current pet as previous
+      _previousPet = currentPet;
+      // Save the current drag offset for the animation
+      _slideAnimation = Tween<Offset>(
+        begin: _dragOffset,
+        end: Offset(2.0, -0.3),
+      ).animate(CurvedAnimation(
+        parent: _swipeController,
+        curve: Curves.easeOutCubic,
+      ));
     });
-    
-    // Set the end position for the swipe animation - fix direction to match gesture
-    _slideAnimation = Tween<Offset>(
-      begin: _dragOffset,
-      end: Offset(2.0, 0.0), // Keep this direction for right swipe
-    ).animate(CurvedAnimation(
-      parent: _swipeController,
-      curve: Curves.easeOut,
-    ));
 
-    // Trigger the animation
-    await _swipeController.forward();
-    
-    // First update UI to show next pet before any async operations
-    if (_currentIndex < _pets.length - 1) {
-      setState(() {
-        _currentIndex++;
-        _dragOffset = Offset.zero;
-        _isDragging = false;
-        _isSwipingRight = false;
-      });
-    } else {
-      // No more pets
-      setState(() {
-        _dragOffset = Offset.zero;
-        _isDragging = false;
-        _isSwipingRight = false;
-      });
-    }
-    
-    // Now record the swipe in the background
     _recordSwipe(true);
-    
-    // Clean up animation state after a short delay to ensure smooth transition
+    _swipeController.forward();
+
     Future.delayed(Duration(milliseconds: 300), () {
       if (mounted) {
         setState(() {
+          if (_currentIndex < _pets.length - 1) {
+            _currentIndex++;
+          }
+          // Reset state for the new current card
+          _dragOffset = Offset.zero;
+          _isDragging = false;
+          _isSwipingRight = false;
           _showPreviousPet = false;
           _isAnimating = false;
         });
@@ -224,25 +228,25 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
   Future<void> _recordSwipe(bool liked) async {
     if (_currentIndex < _pets.length) {
       try {
-        // Get the current user's ID
-        final User? user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          // Record the swipe in Firestore
-          await FirebaseFirestore.instance.collection('swipes').add({
-            'account_id': user.uid,
-            'pet_id': _pets[_currentIndex].pet_id,
-            'liked': liked,
-            'timestamp': FieldValue.serverTimestamp(),
-          });
-          
-          // Show feedback
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(liked ? 'Pet liked!' : 'Skipped this pet'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        }
+        // Don't await this operation to prevent UI blocking
+        _swipeService.recordSwipe(
+          _pets[_currentIndex].pet_id, 
+          liked
+        ).then((success) {
+          // Only show feedback if UI is still mounted and success is true
+          if (success && mounted) {
+            // Use a more subtle indication for swipe recording
+            // Quick toast message instead of SnackBar for a smoother experience
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(liked ? 'Pet liked!' : 'Skipped this pet'),
+                duration: Duration(milliseconds: 500), // Shorter duration
+                behavior: SnackBarBehavior.floating, // Make it less intrusive
+                margin: EdgeInsets.only(bottom: 100, left: 50, right: 50),
+              ),
+            );
+          }
+        });
       } catch (e) {
         print('Error recording swipe: $e');
       }
@@ -250,13 +254,13 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
   }
 
   void _resetPosition() {
-    // Return card to center when swipe isn't enough
+    // Return card to center with a springy animation
     _slideAnimation = Tween<Offset>(
       begin: _dragOffset,
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _swipeController,
-      curve: Curves.easeOut,
+      curve: Curves.elasticOut,
     ));
     
     _swipeController.forward().then((_) {
@@ -270,10 +274,11 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
     });
   }
 
-  // Fix back button - make it much simpler
+  // Completely redesigned build method with isolated card animations 
   @override
   Widget build(BuildContext context) {
     _screenWidth = MediaQuery.of(context).size.width;
+    _screenHeight = MediaQuery.of(context).size.height;
     
     if (_isLoading) {
       return Scaffold(
@@ -335,310 +340,354 @@ class _PetSwiperPageState extends State<PetSwiperPage> with TickerProviderStateM
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFEF5F0),
-      // Make AppBar completely transparent (0 opacity) but keep the back button
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        backgroundColor: Colors.transparent, // Completely transparent background
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        toolbarHeight: kToolbarHeight,
-        // Optional: customize the status bar to match your design
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF5F0),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Stack(
+            children: [
+              // Background layer
+              Positioned.fill(
+                child: Container(color: const Color(0xFFFEF5F0)),
+              ),
+              
+              // Cards stack - completely redesigned for proper isolation
+              AnimatedSwitcher(
+                duration: Duration(milliseconds: 300),
+                child: _currentIndex < _pets.length 
+                  ? _buildCardStack()
+                  : _buildEmptyState(),
+              ),
+              
+              // Action buttons
+              if (_currentIndex < _pets.length && !_isAnimating)
+                _buildActionButtons(),
+              
+              // Status indicators (Like/Dislike)
+              if (_isDragging || _isAnimating)
+                _buildStatusIndicators(),
+            ],
+          ),
         ),
       ),
-      body: Stack(
-        children: [
-          // Main content container
-          Container(
-            child: SafeArea(
-              bottom: false,
-              child: _currentIndex < _pets.length 
-                ? SwipePetDetails(
+    );
+  }
+
+  // New method that builds the stack of cards with proper isolation
+  Widget _buildCardStack() {
+    return Stack(
+      key: ValueKey('card-stack-$_currentIndex'),
+      children: [
+        // Next card (card after the current one) - always position at the bottom
+        if (_currentIndex < _pets.length - 1)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 100,
+            child: Opacity(
+              opacity: _isDragging ? 
+                min(1.0, _dragOffset.distance / (_screenWidth * 0.5)) * 0.7 : 0.0,
+              child: Transform.scale(
+                scale: 0.95,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SwipePetDetails(
+                    key: ValueKey('next-pet-${_pets[_currentIndex + 1].pet_id}'),
+                    pet: _pets[_currentIndex + 1],
+                    onSwipeLeft: () {},
+                    onSwipeRight: () {},
+                    showInteractions: false,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Current card - only affected by its own dragging
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 100,
+          child: GestureDetector(
+            onPanStart: (details) {
+              if (!_isAnimating) {
+                setState(() {
+                  _isDragging = true;
+                  _dragOffset = Offset.zero;
+                });
+              }
+            },
+            onPanUpdate: (details) {
+              if (!_isAnimating && _isDragging) {
+                setState(() {
+                  _dragOffset += details.delta;
+                  
+                  // Limit vertical drag
+                  if (_dragOffset.dy > 50) _dragOffset = Offset(_dragOffset.dx, 50);
+                  if (_dragOffset.dy < -50) _dragOffset = Offset(_dragOffset.dx, -50);
+                  
+                  // Update swipe indicators
+                  _isSwipingRight = _dragOffset.dx > 50;
+                  _isSwipingLeft = _dragOffset.dx < -50;
+                });
+              }
+            },
+            onPanEnd: (details) {
+              if (_isAnimating || !_isDragging) return;
+              
+              final velocity = details.velocity.pixelsPerSecond;
+              final positionThreshold = _screenWidth * 0.35;
+              final velocityThreshold = _screenWidth * 1.5;
+              
+              if (velocity.dx > velocityThreshold || _dragOffset.dx > positionThreshold) {
+                _handleSwipeRight();
+              } else if (velocity.dx < -velocityThreshold || _dragOffset.dx < -positionThreshold) {
+                _handleSwipeLeft();
+              } else {
+                _resetPosition();
+              }
+            },
+            child: Transform.translate(
+              offset: _dragOffset,
+              child: Transform.rotate(
+                angle: (_dragOffset.dx / _screenWidth) * 0.2,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SwipePetDetails(
                     key: ValueKey('current-pet-${_pets[_currentIndex].pet_id}'),
                     pet: _pets[_currentIndex],
                     onSwipeLeft: _handleSwipeLeft,
                     onSwipeRight: _handleSwipeRight,
                     showInteractions: false,
-                  )
-                : Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.pets, size: 80, color: Color(0xFFDDCAC0)),
-                        SizedBox(height: 20),
-                        Text(
-                          'No more pets to show',
-                          style: TextStyle(
-                            color: Color(0xFF545454),
-                            fontSize: 24,
-                            fontFamily: 'Arial',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () => _loadPets(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF725F63),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                          ),
-                          child: Text('Find More Pets'),
-                        ),
-                      ],
-                    ),
                   ),
-            ),
-          ),
-          
-          // Bottom buttons with transparent background
-          if (_currentIndex < _pets.length && !_isAnimating)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 20,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Dislike button
-                  Material(
-                    color: Colors.white,
-                    elevation: 8,
-                    shadowColor: Colors.black.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(50),
-                    child: InkWell(
-                      onTap: _handleSwipeLeft,
-                      borderRadius: BorderRadius.circular(50),
-                      child: Container(
-                        width: 65,
-                        height: 65,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.red.shade400,
-                          size: 30,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 40),
-                  // Like button
-                  Material(
-                    color: Colors.white,
-                    elevation: 8,
-                    shadowColor: Colors.black.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(50),
-                    child: InkWell(
-                      onTap: _handleSwipeRight,
-                      borderRadius: BorderRadius.circular(50),
-                      child: Container(
-                        width: 65,
-                        height: 65,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.favorite,
-                          color: Colors.pink.shade400,
-                          size: 30,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            
-          // Animation and other elements
-          if (_showPreviousPet && _previousPet != null)
-            AnimatedBuilder(
-              animation: _swipeController,
-              builder: (context, child) {
-                final offset = _isDragging ? _dragOffset : _slideAnimation.value;
-                
-                // Calculate rotation based on horizontal offset
-                double rotation = _isDragging 
-                    ? (_dragOffset.dx / _screenWidth) * 0.2
-                    : _rotationAnimation.value * (_slideAnimation.value.dx > 0 ? 1 : -1);
-                
-                return Transform.translate(
-                  offset: offset,
-                  child: Transform.rotate(
-                    angle: rotation,
-                    child: Stack(
-                      children: [
-                        // Pet details card
-                        child!,
-                        
-                        // Like indicator overlay
-                        if (_isSwipingRight) 
-                          Positioned(
-                            top: 40,
-                            right: 40,
-                            child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.favorite, color: Colors.white, size: 30),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'LIKE',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        
-                        // Dislike indicator overlay
-                        if (_isSwipingLeft)
-                          Positioned(
-                            top: 40,
-                            left: 40,
-                            child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.close, color: Colors.white, size: 30),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'NOPE',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+          ),
+        ),
+        
+        // Previous card animation - completely separated from current card
+        if (_showPreviousPet && _previousPet != null)
+          AnimatedBuilder(
+            animation: _swipeController,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: _slideAnimation.value,
+                child: Transform.rotate(
+                  angle: _rotationAnimation.value * (_slideAnimation.value.dx > 0 ? 1 : -1),
+                  child: Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: child,
                   ),
-                );
-              },
-              // Use key to ensure proper rebuild
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
               child: SwipePetDetails(
-                key: ValueKey('previous-pet-${_previousPet?.pet_id ?? 'none'}'),
+                key: ValueKey('previous-pet-${_previousPet!.pet_id}-${DateTime.now().millisecondsSinceEpoch}'),
                 pet: _previousPet!,
                 onSwipeLeft: () {},
                 onSwipeRight: () {},
                 showInteractions: false,
               ),
             ),
-            
-          // Better swipe gesture detection - only in the card header area
-          if (_currentIndex < _pets.length && !_isAnimating)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 220, // Reduced height to only cover top portion of the image
-              child: GestureDetector(
-                // Only detect horizontal drags to differentiate from scrolling
-                onHorizontalDragStart: (_) {
-                  setState(() {
-                    _isDragging = true;
-                  });
-                },
-                onHorizontalDragUpdate: (details) {
-                  setState(() {
-                    _dragOffset = Offset(
-                      _dragOffset.dx + details.delta.dx,
-                      0, // Lock vertical movement
-                    );
-                    
-                    // Determine swipe direction for UI indication
-                    _isSwipingRight = _dragOffset.dx > 50;
-                    _isSwipingLeft = _dragOffset.dx < -50;
-                  });
-                },
-                onHorizontalDragEnd: (details) {
-                  // Detect swipe based on velocity rather than position
-                  if (details.primaryVelocity != null) {
-                    if (details.primaryVelocity! > 800) {
-                      _handleSwipeRight();
-                    } else if (details.primaryVelocity! < -800) {
-                      _handleSwipeLeft();
-                    } else if (_dragOffset.dx > _screenWidth * 0.3) {
-                      _handleSwipeRight();
-                    } else if (_dragOffset.dx < -_screenWidth * 0.3) {
-                      _handleSwipeLeft();
-                    } else {
-                      _resetPosition();
-                    }
-                  }
-                },
-                // Use a transparent overlay
-                child: Container(
-                  color: Colors.transparent,
+          ),
+      ],
+    );
+  }
+  
+  // Helper method for status indicators
+  Widget _buildStatusIndicators() {
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: (_isSwipingRight || _isSwipingLeft) ? 1.0 : 0.0,
+        duration: Duration(milliseconds: 200),
+        child: Stack(
+          children: [
+            // Like indicator
+            if (_isSwipingRight)
+              Positioned(
+                top: _screenHeight * 0.15,
+                right: 40,
+                child: Transform.rotate(
+                  angle: -0.2,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Text(
+                      'LIKE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
             
-          // Show message when all pets have been swiped
-          if (_currentIndex >= _pets.length)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.pets, size: 80, color: Color(0xFFDDCAC0)),
-                  SizedBox(height: 20),
-                  Text(
-                    'No more pets to show',
-                    style: TextStyle(
-                      color: Color(0xFF545454),
-                      fontSize: 24,
-                      fontFamily: 'Arial',
-                      fontWeight: FontWeight.w700,
+            // Dislike indicator
+            if (_isSwipingLeft)
+              Positioned(
+                top: _screenHeight * 0.15,
+                left: 40,
+                child: Transform.rotate(
+                  angle: 0.2,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 2),
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Reload pets
-                      _loadPets();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF725F63),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
+                    child: Text(
+                      'NOPE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     ),
-                    child: Text('Find More Pets'),
                   ),
-                ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
+  
+  // Helper method for action buttons
+  Widget _buildActionButtons() {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 20,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: 20),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Dislike button
+            Material(
+              color: Colors.white,
+              elevation: 8,
+              shadowColor: Colors.black.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(50),
+              child: InkWell(
+                onTap: _handleSwipeLeft,
+                borderRadius: BorderRadius.circular(50),
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    color: Colors.red.shade400,
+                    size: 35,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 40),
+            // Like button
+            Material(
+              color: Colors.white,
+              elevation: 8,
+              shadowColor: Colors.black.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(50),
+              child: InkWell(
+                onTap: _handleSwipeRight,
+                borderRadius: BorderRadius.circular(50),
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.favorite,
+                    color: Colors.pink.shade400,
+                    size: 35,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Helper for the empty state when all cards are swiped
+  Widget _buildEmptyState() {
+    return Positioned.fill(
+      child: Container(
+        padding: EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF5F0),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.pets_rounded,
+                size: 80,
+                color: Color(0xFFDDCAC0),
+              ),
+            ),
+            SizedBox(height: 30),
+            Text(
+              'You\'ve viewed all pets!',
+              style: TextStyle(
+                color: Color(0xFF473C38),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            // ...rest of empty state content...
+          ],
+        ),
+      ),
+    );
+  }
+
+
 }

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/models/organization.dart';
 import 'package:pawsmatch/services/firebase_organization_service.dart';
 import 'package:pawsmatch/pages/mobile/surrenderer/organization_profile.dart';
+import 'package:pawsmatch/services/firebase_photo_service.dart'; // Add this import
 
 class OrganizationsListing extends StatefulWidget {
   final bool showAppBar;
@@ -15,10 +16,13 @@ class OrganizationsListing extends StatefulWidget {
 
 class _OrganizationsListingState extends State<OrganizationsListing> {
   final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
+  final FirebasePhotoService _photoService = FirebasePhotoService(); // Add photo service
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = true;
   List<Organization> _organizations = [];
   String _searchQuery = '';
+  // Map to store organization photos for thumbnails
+  final Map<String, String> _organizationThumbnails = {};
 
   @override
   void initState() {
@@ -50,6 +54,10 @@ class _OrganizationsListingState extends State<OrganizationsListing> {
           _isLoading = false;
         });
       }
+      
+      // After loading organizations, fetch their first photo for thumbnails
+      _loadOrganizationThumbnails(organizations);
+
     } catch (e) {
       print('Error fetching organizations: $e');
       
@@ -88,6 +96,29 @@ class _OrganizationsListingState extends State<OrganizationsListing> {
             _isLoading = false;
           });
         }
+      }
+    }
+  }
+
+  // New method to load organization thumbnails
+  Future<void> _loadOrganizationThumbnails(List<Organization> organizations) async {
+    for (var org in organizations) {
+      String? thumbnailUrl;
+      
+      // First try to get a photo from photo_ids if available
+      if (org.photo_ids != null && org.photo_ids!.isNotEmpty) {
+        thumbnailUrl = await _photoService.getPhotoUrl(org.photo_ids![0]);
+      }
+      
+      // If no photo found, fall back to the logo
+      if (thumbnailUrl == null) {
+        thumbnailUrl = org.logo_url;
+      }
+      
+      if (thumbnailUrl != null && mounted) {
+        setState(() {
+          _organizationThumbnails[org.org_id] = thumbnailUrl!;
+        });
       }
     }
   }
@@ -170,6 +201,7 @@ class _OrganizationsListingState extends State<OrganizationsListing> {
     print("Building UI with ${filteredOrganizations.length} filtered organizations");
     
     return Scaffold(
+      backgroundColor: const Color(0xFFFEF5F0),
       // Only show app bar if directly navigated to (not in tab)
       appBar: shouldShowAppBar ? AppBar(
         title: Text(
@@ -180,276 +212,291 @@ class _OrganizationsListingState extends State<OrganizationsListing> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFEF5F0),
         elevation: 0,
         iconTheme: IconThemeData(
           color: Color(0xFF725F63),
         ),
       ) : null,
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : CustomScrollView(
-              slivers: [
-                // Title Section
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-                    child: Text(
-                      'Discover',
-                      style: TextStyle(
-                        color: const Color(0xFF545454),
-                        fontSize: 28,
-                        fontFamily: 'Arial',
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
+          ? Container(
+              color: const Color(0xFFFEF5F0),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : Container(
+              color: const Color(0xFFFEF5F0),
+              child: CustomScrollView(
+                slivers: [
+                  // Title Section
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+                      child: Text(
+                        'Discover',
+                        style: TextStyle(
+                          color: const Color(0xFF545454),
+                          fontSize: 28,
+                          fontFamily: 'Arial',
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                        ),
+                        textAlign: TextAlign.left,
                       ),
-                      textAlign: TextAlign.left,
                     ),
                   ),
-                ),
-                
-                // Search Bar Section
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
-                    child: Row(
-                      children: [
-                        // Search input with icon
-                        Expanded(
-                          child: Container(
-                            height: 48,
+                  
+                  // Search Bar Section
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 16.0),
+                      child: Row(
+                        children: [
+                          // Search input with icon
+                          Expanded(
+                            child: Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF7F8FD),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: Colors.grey.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                decoration: InputDecoration(
+                                  hintText: 'Search for organizations',
+                                  hintStyle: TextStyle(
+                                    color: const Color(0xFF8F9098),
+                                    fontSize: 14,
+                                    fontFamily: 'Inter',
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: const Color(0xFF725F63),
+                                    size: 22,
+                                  ),
+                                  suffixIcon: _searchController.text.isNotEmpty
+                                      ? IconButton(
+                                          icon: Icon(
+                                            Icons.clear,
+                                            color: Colors.grey,
+                                            size: 20,
+                                          ),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            _onSearch('');
+                                          },
+                                        )
+                                      : null,
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 12, 
+                                    horizontal: 12
+                                  ),
+                                ),
+                                onChanged: _onSearch,
+                              ),
+                            ),
+                          ),
+                          
+                          // Filter/Sort button
+                          Container(
+                            margin: EdgeInsets.only(left: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF7F8FD),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: Colors.grey.withOpacity(0.3),
-                                width: 1,
+                              color: const Color(0xFF725F63),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.filter_list,
+                                color: Colors.white,
+                                size: 24,
                               ),
-                            ),
-                            child: TextField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                hintText: 'Search for organizations',
-                                hintStyle: TextStyle(
-                                  color: const Color(0xFF8F9098),
-                                  fontSize: 14,
-                                  fontFamily: 'Inter',
-                                ),
-                                prefixIcon: Icon(
-                                  Icons.search,
-                                  color: const Color(0xFF725F63),
-                                  size: 22,
-                                ),
-                                suffixIcon: _searchController.text.isNotEmpty
-                                    ? IconButton(
-                                        icon: Icon(
-                                          Icons.clear,
-                                          color: Colors.grey,
-                                          size: 20,
-                                        ),
-                                        onPressed: () {
-                                          _searchController.clear();
-                                          _onSearch('');
-                                        },
-                                      )
-                                    : null,
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  vertical: 12, 
-                                  horizontal: 12
-                                ),
+                              onPressed: () {
+                                _showFilterOptions();
+                              },
+                              tooltip: 'Filter & Sort',
+                              constraints: BoxConstraints(
+                                minWidth: 48,
+                                minHeight: 48,
                               ),
-                              onChanged: _onSearch,
+                              padding: EdgeInsets.zero,
                             ),
                           ),
-                        ),
-                        
-                        // Filter/Sort button
-                        Container(
-                          margin: EdgeInsets.only(left: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF725F63),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.filter_list,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                            onPressed: () {
-                              _showFilterOptions();
-                            },
-                            tooltip: 'Filter & Sort',
-                            constraints: BoxConstraints(
-                              minWidth: 48,
-                              minHeight: 48,
-                            ),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                
-                // Organization list
-                filteredOrganizations.isEmpty
-                    ? SliverFillRemaining(
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.search_off, size: 64, color: Colors.grey),
-                              SizedBox(height: 16),
-                              Text(
-                                'No organizations found',
-                                style: TextStyle(fontSize: 18, color: Colors.grey),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : SliverPadding(
-                        padding: const EdgeInsets.all(16),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final org = filteredOrganizations[index];
-                              return Card(
-                                elevation: 3,
-                                margin: EdgeInsets.only(bottom: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                  
+                  // Organization list
+                  filteredOrganizations.isEmpty
+                      ? SliverFillRemaining(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.search_off, size: 64, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No organizations found',
+                                  style: TextStyle(fontSize: 18, color: Colors.grey),
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      height: 150,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        color: Color(0xFFD8CBCB),
-                                        borderRadius: BorderRadius.vertical(
-                                          top: Radius.circular(12),
+                              ],
+                            ),
+                          ),
+                        )
+                      : SliverPadding(
+                          padding: const EdgeInsets.all(16),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final org = filteredOrganizations[index];
+                                return Card(
+                                  elevation: 3,
+                                  margin: EdgeInsets.only(bottom: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        height: 150,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Color(0xFFD8CBCB),
+                                          borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(12),
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: _organizationThumbnails.containsKey(org.org_id)
+                                            ? Image.network(
+                                                _organizationThumbnails[org.org_id]!,
+                                                width: double.infinity,
+                                                height: 150,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) => 
+                                                  Icon(Icons.pets, size: 60, color: Color(0xFF725F63)),
+                                              )
+                                            : org.logo_url != null 
+                                              ? Image.network(
+                                                  org.logo_url!,
+                                                  width: 80,
+                                                  height: 80,
+                                                  fit: BoxFit.contain,
+                                                  errorBuilder: (context, error, stackTrace) => 
+                                                    Icon(Icons.pets, size: 60, color: Color(0xFF725F63)),
+                                                )
+                                              : Icon(
+                                                  Icons.pets,
+                                                  size: 60,
+                                                  color: Color(0xFF725F63),
+                                                ),
                                         ),
                                       ),
-                                      child: Center(
-                                        child: org.logo_url != null 
-                                          ? Image.network(
-                                              org.logo_url!,
-                                              width: 80,
-                                              height: 80,
-                                              fit: BoxFit.contain,
-                                              errorBuilder: (context, error, stackTrace) => 
-                                                Icon(Icons.pets, size: 60, color: Color(0xFF725F63)),
-                                            )
-                                          : Icon(
-                                              Icons.pets,
-                                              size: 60,
-                                              color: Color(0xFF725F63),
-                                            ),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            org.org_name,
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF545454),
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.location_on,
-                                                size: 16,
-                                                color: Color(0xFF725F63),
+                                      Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              org.org_name,
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF545454),
                                               ),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                org.location ?? 'Location not specified',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[600],
+                                            ),
+                                            SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on,
+                                                  size: 16,
+                                                  color: Color(0xFF725F63),
                                                 ),
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            org.about ?? 'No description available',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey[800],
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  org.location ?? 'Location not specified',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                          SizedBox(height: 16),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              OutlinedButton(
-                                                onPressed: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) => OrganizationProfile(
-                                                        organization: org,
+                                            SizedBox(height: 8),
+                                            Text(
+                                              org.about ?? 'No description available',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[800],
+                                              ),
+                                            ),
+                                            SizedBox(height: 16),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                OutlinedButton(
+                                                  onPressed: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => OrganizationProfile(
+                                                          organization: org,
+                                                        ),
                                                       ),
+                                                    );
+                                                  },
+                                                  style: OutlinedButton.styleFrom(
+                                                    side: BorderSide(
+                                                        color: Color(0xFF725F63)),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(8),
                                                     ),
-                                                  );
-                                                },
-                                                style: OutlinedButton.styleFrom(
-                                                  side: BorderSide(
-                                                      color: Color(0xFF725F63)),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Text(
+                                                    'View Details',
+                                                    style: TextStyle(
+                                                      color: Color(0xFF725F63),
+                                                    ),
                                                   ),
                                                 ),
-                                                child: Text(
-                                                  'View Details',
-                                                  style: TextStyle(
-                                                    color: Color(0xFF725F63),
+                                                ElevatedButton(
+                                                  onPressed: () {
+                                                    // TODO: Implement contacting organization
+                                                  },
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: Color(0xFF725F63),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    'Contact',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                              ElevatedButton(
-                                                onPressed: () {
-                                                  // TODO: Implement contacting organization
-                                                },
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Color(0xFF725F63),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  'Contact',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            childCount: filteredOrganizations.length,
+                                    ],
+                                  ),
+                                );
+                              },
+                              childCount: filteredOrganizations.length,
+                            ),
                           ),
                         ),
-                      ),
-              ],
+                ],
+              ),
             ),
     );
   }

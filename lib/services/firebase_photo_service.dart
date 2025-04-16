@@ -62,16 +62,46 @@ class FirebasePhotoService {
       return null;
     }
   }
-
-  String getPhotoURLFromSupabase(String photo_id, dynamic supabase) {
-    return supabase.storage.from('pet').createPublicUrl('uploads/$photo_id');
+  
+  // New method to get multiple photo URLs for an organization
+  Future<List<String>> getOrganizationPhotoUrls(List<String>? photoIds) async {
+    if (photoIds == null || photoIds.isEmpty) {
+      return [];
+    }
+    
+    List<String> photoUrls = [];
+    
+    try {
+      // Get photos in parallel for better performance
+      final futures = photoIds.map((id) => getPhotoUrl(id));
+      final results = await Future.wait(futures);
+      
+      // Filter out null results and add valid URLs to the list
+      photoUrls = results.whereType<String>().toList();
+      
+      print('Retrieved ${photoUrls.length} photo URLs from ${photoIds.length} photo IDs');
+    } catch (e) {
+      print('Error getting organization photo URLs: $e');
+    }
+    
+    return photoUrls;
   }
 
-  String getOrgLogoURLFromSupabase(String org_id, dynamic supabase) {
-    return supabase.storage.from('organization-logo').createPublicUrl('uploads/$org_id');
-  }
+  
 
-  String getOrgDocURLFromSupabase(String org_id, dynamic supabase) {
-    return supabase.storage.from('organization_documents').createPublicUrl('uploads/$org_id');
-  }
+  // String getPhotoURLFromSupabase(String photo_id, dynamic supabase) {
+  //   return supabase.storage.from('pet').createPublicUrl('uploads/$photo_id');
+  // }
+
+  // String getOrgLogoURLFromSupabase(String org_id, dynamic supabase) {
+  //   return supabase.storage.from('organization-logo').createPublicUrl('uploads/$org_id');
+  // }
+
+  // String getOrgDocURLFromSupabase(String org_id, dynamic supabase) {
+  //   return supabase.storage.from('organization_documents').createPublicUrl('uploads/$org_id');
+  // }
+
+  // String getOrgPhotosFromSupabase(String org_id, dynamic supabase) {
+  //   return supabase.storage.from('organization_photos').createPublicUrl('uploads/$org_id');
+  // }
 }

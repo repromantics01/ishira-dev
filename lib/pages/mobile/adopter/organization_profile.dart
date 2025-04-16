@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/models/organization.dart';
 import 'package:intl/intl.dart';
-import 'package:pawsmatch/pages/mobile/surrenderer/surrender_pet.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:pawsmatch/services/firebase_photo_service.dart';
-import 'package:pawsmatch/services/firebase_organization_service.dart';
 
-class OrganizationProfile extends StatefulWidget {
+class AdopterOrganizationProfile extends StatefulWidget {
   final Organization organization;
 
-  const OrganizationProfile({super.key, required this.organization});
+  const AdopterOrganizationProfile({Key? key, required this.organization})
+      : super(key: key);
 
   @override
-  State<OrganizationProfile> createState() => _OrganizationProfileState();
+  _AdopterOrganizationProfileState createState() =>
+      _AdopterOrganizationProfileState();
 }
 
-class _OrganizationProfileState extends State<OrganizationProfile> {
+class _AdopterOrganizationProfileState
+    extends State<AdopterOrganizationProfile> {
   final FirebasePhotoService _photoService = FirebasePhotoService();
-  final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
-  
+
   final List<String> _photoUrls = [];
   bool _isLoading = true;
   int _currentPhotoIndex = 0;
@@ -40,12 +41,11 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
       _isLoading = true;
     });
 
-    // Remove logo from hero section - only use photos from photo_ids
-    if (widget.organization.photo_ids != null && widget.organization.photo_ids!.isNotEmpty) {
-      final additionalPhotos = await _photoService.getOrganizationPhotoUrls(
-        widget.organization.photo_ids
-      );
-      
+    if (widget.organization.photo_ids != null &&
+        widget.organization.photo_ids!.isNotEmpty) {
+      final additionalPhotos = await _photoService
+          .getOrganizationPhotoUrls(widget.organization.photo_ids);
+
       if (additionalPhotos.isNotEmpty) {
         if (mounted) {
           setState(() {
@@ -69,14 +69,22 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
     }
   }
 
+  Future<void> _launchURL(String? urlString) async {
+    if (urlString == null || urlString.isEmpty) return;
+
+    try {
+      final Uri url = Uri.parse(urlString);
+      await url_launcher.launchUrl(url);
+    } catch (e) {
+      print('Error launching URL: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final rectangleWidth = screenWidth - 48; 
+    final rectangleWidth = screenWidth - 48; // 24px padding on each side
 
-    // Add debugging for the organization object
-    print('Organization data: ${widget.organization.toJson()}');
-    
     return Scaffold(
       body: SingleChildScrollView(
         child: Container(
@@ -84,7 +92,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Hero image carousel at the top
+              // Hero image carousel
               Stack(
                 children: [
                   Container(
@@ -92,85 +100,92 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                     decoration: BoxDecoration(
                       color: Color(0xFFD8CBCB), // Fallback color
                     ),
-                    child: _isLoading 
-                      ? Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF725F63)),
-                          ),
-                        )
-                      : _photoUrls.isEmpty
+                    child: _isLoading
                         ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.pets,
-                                  size: 100,
-                                  color: Color(0xFF725F63),
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No images available',
-                                  style: TextStyle(
-                                    color: Color(0xFF725F63),
-                                  ),
-                                ),
-                              ],
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF725F63)),
                             ),
                           )
-                        : PageView.builder(
-                            controller: _pageController,
-                            itemCount: _photoUrls.length,
-                            onPageChanged: (index) {
-                              setState(() {
-                                _currentPhotoIndex = index;
-                              });
-                            },
-                            itemBuilder: (context, index) {
-                              return Image.network(
-                                _photoUrls[index],
-                                width: double.infinity,
-                                height: 390,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  print('Error loading image: $error');
-                                  return Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.broken_image,
-                                          size: 50,
-                                          color: Color(0xFF725F63),
-                                        ),
-                                        SizedBox(height: 16),
-                                        Text(
-                                          'Image failed to load',
-                                          style: TextStyle(
-                                            color: Color(0xFF725F63),
-                                          ),
-                                        ),
-                                      ],
+                        : _photoUrls.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.pets,
+                                      size: 100,
+                                      color: Color(0xFF725F63),
                                     ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'No images available',
+                                      style: TextStyle(
+                                        color: Color(0xFF725F63),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : PageView.builder(
+                                controller: _pageController,
+                                itemCount: _photoUrls.length,
+                                onPageChanged: (index) {
+                                  setState(() {
+                                    _currentPhotoIndex = index;
+                                  });
+                                },
+                                itemBuilder: (context, index) {
+                                  return Image.network(
+                                    _photoUrls[index],
+                                    width: double.infinity,
+                                    height: 390,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      print('Error loading image: $error');
+                                      return Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.broken_image,
+                                              size: 50,
+                                              color: Color(0xFF725F63),
+                                            ),
+                                            SizedBox(height: 16),
+                                            Text(
+                                              'Image failed to load',
+                                              style: TextStyle(
+                                                color: Color(0xFF725F63),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress
+                                                      .expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Color(0xFF725F63)),
+                                        ),
+                                      );
+                                    },
                                   );
                                 },
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Center(
-                                    child: CircularProgressIndicator(
-                                      value: loadingProgress.expectedTotalBytes !=
-                                              null
-                                          ? loadingProgress.cumulativeBytesLoaded /
-                                              loadingProgress.expectedTotalBytes!
-                                          : null,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Color(0xFF725F63)),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
+                              ),
                   ),
                   // Back button with transparent background
                   Positioned(
@@ -195,30 +210,30 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: _photoUrls.isEmpty
-                        ? []
-                        : List.generate(
-                            _photoUrls.length,
-                            (index) => GestureDetector(
-                              onTap: () {
-                                _pageController.animateToPage(
-                                  index,
-                                  duration: Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              },
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                margin: EdgeInsets.symmetric(horizontal: 4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: index == _currentPhotoIndex
-                                      ? Color(0xFF686868)
-                                      : Colors.white.withOpacity(0.5),
+                          ? []
+                          : List.generate(
+                              _photoUrls.length,
+                              (index) => GestureDetector(
+                                onTap: () {
+                                  _pageController.animateToPage(
+                                    index,
+                                    duration: Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  margin: EdgeInsets.symmetric(horizontal: 4),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: index == _currentPhotoIndex
+                                        ? Color(0xFF686868)
+                                        : Colors.white.withOpacity(0.5),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                     ),
                   ),
                 ],
@@ -242,74 +257,6 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                               fontWeight: FontWeight.w700,
                               height: 0.9,
                             ),
-                          ),
-                          SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                size: 16,
-                                color: Color(0xFF725F63),
-                              ),
-                              SizedBox(width: 4),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Display location on first line
-                                    Text(
-                                      "${widget.organization.location ?? 'Location not specified'}",
-                                      style: TextStyle(
-                                        color: const Color(0xFF545454),
-                                        fontSize: 16,
-                                        fontStyle: FontStyle.italic,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                    // Display address on second line if available
-                                    if (widget.organization.address != null && 
-                                        widget.organization.address!.isNotEmpty) 
-                                      Text(
-                                        widget.organization.address!,
-                                        style: TextStyle(
-                                          color: const Color(0xFF545454),
-                                          fontSize: 14,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 2,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          // Ratings (placeholder)
-                          Row(
-                            children: [
-                              Row(
-                                children: List.generate(
-                                  5,
-                                  (index) => Icon(
-                                    index < 4 ? Icons.star : Icons.star_border,
-                                    color: Color(0xFFFFCD3C),
-                                    size: 24,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                "(4.5)",
-                                style: TextStyle(
-                                  color: const Color(0xFF545454),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),
@@ -358,7 +305,49 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                 ),
               ),
 
-              // About Us section with minimum height and consistent width
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    size: 16,
+                    color: Color(0xFF725F63),
+                  ),
+                  SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Display location on first line
+                        Text(
+                          "${widget.organization.location ?? 'Location not specified'}",
+                          style: TextStyle(
+                            color: const Color(0xFF545454),
+                            fontSize: 16,
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        // Display address on second line if available
+                        if (widget.organization.address != null &&
+                            widget.organization.address!.isNotEmpty)
+                          Text(
+                            widget.organization.address!,
+                            style: TextStyle(
+                              color: const Color(0xFF545454),
+                              fontSize: 14,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              // // About Us section with minimum height and consistent width
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -374,7 +363,8 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                           child: Container(
                             width: rectangleWidth,
                             constraints: BoxConstraints(
-                              minHeight: 150, // Minimum height for the "About" box
+                              minHeight:
+                                  150, // Minimum height for the "About" box
                             ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEDEDED),
@@ -382,7 +372,8 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                             ),
                             padding: const EdgeInsets.fromLTRB(16, 40, 16, 25),
                             child: Text(
-                              widget.organization.about ?? 'No information provided.',
+                              widget.organization.about ??
+                                  'No information provided.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: const Color(0xFF545454),
@@ -406,7 +397,8 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                               ),
                               child: Text(
                                 'About Us',
-                                overflow: TextOverflow.ellipsis, // Prevent wrapping
+                                overflow:
+                                    TextOverflow.ellipsis, // Prevent wrapping
                                 maxLines: 1, // Force single line
                                 style: TextStyle(
                                   color: const Color(0xFF545454),
@@ -423,13 +415,12 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                 ),
               ),
 
-              //SizedBox(height: 15),
-
               // Mission section with consistent width and non-wrapping title
               Column(
                 children: [
                   Container(
-                    width: rectangleWidth - 48, // Account for the existing padding
+                    width:
+                        rectangleWidth - 48, // Account for the existing padding
                     child: Text(
                       'Our Mission',
                       textAlign: TextAlign.center,
@@ -475,7 +466,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                           padding: const EdgeInsets.fromLTRB(16, 25, 16, 25),
                           child: Text(
                             widget.organization.mission ??
-                              'No mission statement provided.',
+                                'No mission statement provided.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.white,
@@ -641,16 +632,21 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                   Icons.email_outlined,
                                   'Email',
                                   widget.organization.email!,
+                                  onTap: () => _launchURL(
+                                      'mailto:${widget.organization.email}'),
                                 ),
                               if (widget.organization.landline != null)
                                 _buildContactItem(
                                   Icons.phone,
                                   'Landline',
                                   widget.organization.landline!,
+                                  onTap: () => _launchURL(
+                                      'tel:${widget.organization.landline}'),
                                 ),
-                              // Contact numbers section - improved with icons and proper parsing
+                              // Contact numbers section
                               if (widget.organization.contact_numbers != null &&
-                                  widget.organization.contact_numbers!.isNotEmpty)
+                                  widget
+                                      .organization.contact_numbers!.isNotEmpty)
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -664,22 +660,29 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                     ),
                                     SizedBox(height: 8),
                                     ...widget.organization.contact_numbers!
-                                      .map((contactEntry) {
-                                        // Parse contact entry in format "label: number"
-                                        final parts = contactEntry.split(':');
-                                        if (parts.length < 2) return _buildContactItem(
+                                        .map((contactEntry) {
+                                      // Parse contact entry in format "label: number"
+                                      final parts = contactEntry.split(':');
+                                      if (parts.length < 2)
+                                        return _buildContactItem(
                                           Icons.phone_android,
                                           'Contact',
                                           contactEntry.trim(),
+                                          onTap: () => _launchURL(
+                                              'tel:${contactEntry.trim()}'),
                                         );
-                                        
-                                        return _buildContactItem(
-                                          _getContactIcon(parts[0].trim().toLowerCase()),
-                                          parts[0].trim(),
-                                          parts.sublist(1).join(':').trim(),
-                                        );
-                                      })
-                                      .toList(),
+
+                                      final label = parts[0].trim();
+                                      final number =
+                                          parts.sublist(1).join(':').trim();
+
+                                      return _buildContactItem(
+                                        _getContactIcon(label.toLowerCase()),
+                                        label,
+                                        number,
+                                        onTap: () => _launchURL('tel:$number'),
+                                      );
+                                    }).toList(),
                                   ],
                                 ),
                             ],
@@ -690,18 +693,14 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
 
                     SizedBox(height: 30),
 
-                    // Social Media section - with proper icons and styling
+                    // Social Media section
                     Builder(
                       builder: (context) {
-                        // Debug print for social media links
-                        print('Social media links: ${widget.organization.social_media_links}');
-                        
-                        if (widget.organization.social_media_links == null || 
+                        if (widget.organization.social_media_links == null ||
                             widget.organization.social_media_links!.isEmpty) {
-                          print('No social media links found or empty list');
                           return SizedBox.shrink(); // Don't show section
                         }
-                        
+
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -720,7 +719,8 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                                 child: ListView(
                                   shrinkWrap: true,
                                   scrollDirection: Axis.horizontal,
-                                  children: _buildSocialMediaIcons(widget.organization),
+                                  children: _buildSocialMediaIcons(
+                                      widget.organization),
                                 ),
                               ),
                             ),
@@ -734,80 +734,35 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
 
               SizedBox(height: 40),
 
-              // Action buttons
+              // Send Message button for adopters
               Center(
-                child: Column(
-                  children: [
-                    Container(
-                      width: screenWidth * 0.6,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // TODO: Implement send message functionality
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFEFCECB),
-                          foregroundColor: const Color(0xFF1E2C2B),
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(
-                              width: 1,
-                              color: const Color(0xFF8B8B8B),
-                            ),
-                            borderRadius: BorderRadius.circular(250),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Text(
-                          'SEND MESSAGE',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 1.25,
-                          ),
-                        ),
+                child: Container(
+                  width: screenWidth * 0.6,
+                  margin: EdgeInsets.only(bottom: 60),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Show message dialog
+                      _showMessageDialog(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF725F63),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(250),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      'SEND MESSAGE',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 1.25,
                       ),
                     ),
-                    SizedBox(height: 16),
-                    Container(
-                      width: screenWidth * 0.6,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // Navigate to surrender pet page with organization ID
-                          Navigator.push(
-                            context, 
-                            MaterialPageRoute(
-                              builder: (context) => SurrenderForm(
-                                organizationId: widget.organization.org_id,
-                              ),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFB6CBCA),
-                          foregroundColor: const Color(0xFF1E2B2B),
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(
-                              width: 1,
-                              color: const Color(0xFF8B8B8B),
-                            ),
-                            borderRadius: BorderRadius.circular(250),
-                          ),
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Text(
-                          'SURRENDER HERE',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 1.25,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-
-              SizedBox(height: 60),
             ],
           ),
         ),
@@ -815,164 +770,146 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
     );
   }
 
-  List<Widget> _buildSimpleSocialMediaIcons(Organization organization) {
-    // Debugging
-    if (organization.social_media_links == null) {
-      print('Social media links are null');
-      return [];
-    }
-    
-    if (organization.social_media_links!.isEmpty) {
-      print('Social media links list is empty');
-      return [];
-    }
-    
-    // Print all entries for debugging
-    organization.social_media_links!.forEach((entry) {
-      print('Social link: $entry');
-    });
+  void _showMessageDialog(BuildContext context) {
+    final TextEditingController messageController = TextEditingController();
 
-    final socialIcons = {
-      'facebook': Icons.facebook,
-      'instagram': Icons.camera_alt,
-      'twitter': Icons.flutter_dash,
-      'x': Icons.flutter_dash,
-      'tiktok': Icons.music_note,
-      'youtube': Icons.play_circle_filled,
-      'linkedin': Icons.link,
-      'pinterest': Icons.push_pin,
-    };
-
-    List<Widget> socialWidgets = [];
-
-    for (String entry in organization.social_media_links!) {
-      // Parse the platform and URL from the string (format: "platform: url")
-      List<String> parts = entry.split(':');
-      if (parts.length < 2) continue; // Skip malformed entries
-      
-      final platform = parts[0].trim().toLowerCase();
-      final url = parts.sublist(1).join(':').trim(); // Join the rest in case URL contains colons
-      
-      // Skip empty URLs
-      if (url.isEmpty) {
-        print('Empty URL for platform: $platform');
-        continue;
-      }
-      
-      print('Adding icon for: $platform');
-      
-      socialWidgets.add(Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: InkWell(
-          onTap: () {
-            // Future: Add URL launching functionality
-            print('Would launch URL: $url');
-          },
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.grey[200],
-                ),
-                child: Icon(
-                  socialIcons[platform] ?? Icons.link,
+              Text(
+                'Message to ${widget.organization.org_name}',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                   color: Color(0xFF725F63),
-                  size: 24,
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                _capitalizeFirstLetter(platform),
-                style: TextStyle(
-                  color: const Color(0xFF545454),
-                  fontSize: 12,
+              SizedBox(height: 20),
+              TextField(
+                controller: messageController,
+                decoration: InputDecoration(
+                  hintText: 'Type your message here...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFF725F63)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Color(0xFF725F63), width: 2),
+                  ),
                 ),
+                maxLines: 6,
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Process message sending here
+                      Navigator.of(context).pop();
+                      // Show confirmation
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'Message sent to ${widget.organization.org_name}'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF725F63),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text('Send Message'),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-      ));
-    }
-
-    // If no valid social links were found
-    if (socialWidgets.isEmpty) {
-      return [
-        Center(
-          child: Text(
-            'No social media links available',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        )
-      ];
-    }
-
-    return socialWidgets;
-  }
-  
-  String _capitalizeFirstLetter(String input) {
-    if (input.isEmpty) return input;
-    return input[0].toUpperCase() + input.substring(1);
-  }
-
-  // Helper method to build contact items with icons
-  Widget _buildContactItem(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F2F2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: const Color(0xFF725F63),
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: const Color(0xFF545454),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: const Color(0xFF545454),
-                    fontSize: 15,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
-  
+
+  // Helper method to build contact items with icons - added onTap parameter
+  Widget _buildContactItem(IconData icon, String label, String value,
+      {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: const Color(0xFF725F63),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: const Color(0xFF545454),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: const Color(0xFF545454),
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Helper to determine contact icon based on label
   IconData _getContactIcon(String labelLower) {
-    if (labelLower.contains('mobile') || 
-        labelLower.contains('phone') || 
+    if (labelLower.contains('mobile') ||
+        labelLower.contains('phone') ||
         labelLower.contains('cell')) {
       return Icons.phone_android;
     } else if (labelLower.contains('emergency')) {
@@ -988,11 +925,11 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
   }
 
   List<Widget> _buildSocialMediaIcons(Organization organization) {
-    if (organization.social_media_links == null || 
+    if (organization.social_media_links == null ||
         organization.social_media_links!.isEmpty) {
       return [];
     }
-    
+
     // Map platform names to their corresponding icons and colors
     final socialIcons = {
       'facebook': Icons.facebook,
@@ -1000,7 +937,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
       'twitter': Icons.flutter_dash,
       'x': Icons.flutter_dash,
     };
-    
+
     // Map platform names to brand colors
     final socialColors = {
       'facebook': const Color(0xFF1877F2),
@@ -1020,12 +957,12 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
     for (String entry in organization.social_media_links!) {
       List<String> parts = entry.split(':');
       if (parts.length < 2) continue; // Skip malformed entries
-      
+
       final platform = parts[0].trim().toLowerCase();
       final url = parts.sublist(1).join(':').trim();
-      
+
       if (url.isEmpty) continue;
-      
+
       socialWidgets.add(
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1052,10 +989,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                     color: Colors.white,
                     size: 30,
                   ),
-                  onPressed: () {
-                    // TODO: Implement URL launching
-                    print('Would launch URL: $url');
-                  },
+                  onPressed: () => _launchURL(url),
                 ),
               ),
               SizedBox(height: 6),
@@ -1088,5 +1022,10 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
     }
 
     return socialWidgets;
+  }
+
+  String _capitalizeFirstLetter(String input) {
+    if (input.isEmpty) return input;
+    return input[0].toUpperCase() + input.substring(1);
   }
 }

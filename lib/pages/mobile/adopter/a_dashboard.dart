@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
@@ -603,92 +604,48 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
       body: _getBody(),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: const Color(0xFF020202), width: 1),
-          ),
+          color: const Color(0xFFFEF5F0).withOpacity(0.5), // Semi-transparent background
         ),
-        height: 84,
+        height: 85, 
         child: Column(
           children: [
             SizedBox(height: 5),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                // Swiped pets
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.pets, size: 32),
-                      onPressed: () => _onItemTapped(0),
-                      color: _selectedIndex == 0 ? const Color(0xFF725F63) : Colors.grey,
-                    ),
-                    Text(
-                      'Swiped Pets',
-                      style: TextStyle(
-                        color: const Color(0xFF212121),
-                        fontSize: 10,
-                        fontFamily: 'Actor',
-                        fontWeight: FontWeight.w400,
-                      ),
-                    )
-                  ],
+                // Swiped pets button
+                _buildAnimatedNavButton(
+                  icon: Icons.pets,
+                  label: 'Swiped Pets',
+                  isSelected: _selectedIndex == 0,
+                  onTap: () => _onItemTapped(0),
+                  isHomeButton: false,
                 ),
                 
-                // Home - with larger circular background
-                Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF6F6F6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(Icons.home, size: 24),
-                        onPressed: () => _onItemTapped(1),
-                        color: _selectedIndex == 1 ? const Color(0xFF725F63) : Colors.grey,
-                      ),
-                    ),
-                    Text(
-                      'Home',
-                      style: TextStyle(
-                        color: const Color(0xFF212121),
-                        fontSize: 10,
-                        fontFamily: 'Actor',
-                        fontWeight: FontWeight.w400,
-                      ),
-                    )
-                  ],
+                // Home button - special design
+                _buildAnimatedNavButton(
+                  icon: Icons.home,
+                  label: 'Home',
+                  isSelected: _selectedIndex == 1,
+                  onTap: () => _onItemTapped(1),
+                  isHomeButton: true,
                 ),
                 
-                // Your Adoptions
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.assignment, size: 32),
-                      onPressed: () => _onItemTapped(2),
-                      color: _selectedIndex == 2 ? const Color(0xFF725F63) : Colors.grey,
-                    ),
-                    Text(
-                      'Your Adoptions',
-                      style: TextStyle(
-                        color: const Color(0xFF212121),
-                        fontSize: 10,
-                        fontFamily: 'Actor',
-                        fontWeight: FontWeight.w400,
-                      ),
-                    )
-                  ],
+                // Your Adoptions button
+                _buildAnimatedNavButton(
+                  icon: Icons.assignment,
+                  label: 'Your Adoptions',
+                  isSelected: _selectedIndex == 2,
+                  onTap: () => _onItemTapped(2),
+                  isHomeButton: false,
                 ),
               ],
             ),
             // Bottom indicator line
             Container(
-              margin: const EdgeInsets.only(top: 10),
+              margin: const EdgeInsets.only(top: 5), // Adjusted from 10
               width: 134,
-              height: 5,
+              height: 2,
               decoration: ShapeDecoration(
                 color: const Color(0xFF020202),
                 shape: RoundedRectangleBorder(
@@ -699,6 +656,82 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
           ],
         ),
       ),
+    );
+  }
+
+  // Renamed from _buildAnimatedNavButton and simplified with no animations
+  Widget _buildAnimatedNavButton({
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isHomeButton,
+  }) {
+    // Colors and sizes
+    final activeColor = const Color(0xFF725F63);
+    final inactiveColor = Colors.grey;
+    final double iconSize = isHomeButton ? 26 : 32;
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Button without animation
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
+          child: Container(
+            padding: EdgeInsets.all(isHomeButton ? 8 : 6),
+            decoration: BoxDecoration(
+              color: isHomeButton 
+                ? isSelected 
+                  ? Color(0xFFECC8C0).withOpacity(0.7)  // Semi-transparent
+                  : const Color(0xFFF6F6F6).withOpacity(0.5)  // Semi-transparent
+                : Colors.transparent,
+              shape: BoxShape.circle,
+              boxShadow: isSelected && isHomeButton
+                ? [
+                    BoxShadow(
+                      color: activeColor.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    )
+                  ]
+                : null,
+            ),
+            child: Icon(
+              icon,
+              size: iconSize,
+              color: isSelected ? activeColor : inactiveColor,
+            ),
+          ),
+        ),
+        
+        SizedBox(height: 5),
+        
+        // Label
+        Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? activeColor : const Color(0xFF212121),
+            fontSize: 10,
+            fontFamily: 'Actor',
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+        
+        // Indicator dot for selected item
+        Container(
+          margin: EdgeInsets.only(top: 4),
+          width: isSelected && !isHomeButton ? 4 : 0,
+          height: 4,
+          decoration: BoxDecoration(
+            color: activeColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum ApplicaionStatus {
+enum ApplicationStatus {
   Approved,
   Pending,
   Rejected,
+  Completed,
+  Cancelled,
 }
 
 class Adopt {
@@ -12,11 +14,11 @@ class Adopt {
   String pet_id;
   String account_id;
   String org_id;
-  ApplicaionStatus application_status; 
+  ApplicationStatus application_status; 
   String adopter_comment;
-  DateTime date_reviewed; //by the organization
+  DateTime? date_reviewed; //by the organization
   DateTime date_submitted; 
-  DateTime date_completed;
+  DateTime? date_completed;
 
   Adopt({
     required this.adopt_id,
@@ -30,12 +32,23 @@ class Adopt {
     required this.date_completed,
   });
 
+  Adopt.fromJson(Map<String, dynamic> json)
+      : adopt_id = json['adopt_id'] as String? ?? 'unknown_id',
+        pet_id = json['pet_id'] as String? ?? 'unknown_pet_id',
+        account_id = json['account_id'] as String? ?? 'unknown_account_id',
+        org_id = json['org_id'] as String? ?? 'unknown_org_id',
+        application_status = ApplicationStatus.values.firstWhere((e) => e.toString() == 'ApplicationStatus.' + json['application_status']),
+        adopter_comment = json['adopter_comment'] as String? ?? '',
+        date_reviewed = DateTime.parse(json['date_reviewed'] as String),
+        date_submitted = DateTime.parse(json['date_submitted'] as String),
+        date_completed = DateTime.parse(json['date_completed'] as String);
+
   Adopt copyWith({
     String? adopt_id,
     String? pet_id,
     String? account_id,
     String? org_id,
-    ApplicaionStatus? application_status,
+    ApplicationStatus? application_status,
     String? adopter_comment,
     DateTime? date_reviewed,
     DateTime? date_submitted,
@@ -62,9 +75,9 @@ class Adopt {
       'org_id': org_id,
       'application_status': application_status.toString().split('.').last,
       'adopter_comment': adopter_comment,
-      'date_reviewed': date_reviewed.toIso8601String(),
+      'date_reviewed': date_reviewed?.toIso8601String(),
       'date_submitted': date_submitted.toIso8601String(),
-      'date_completed': date_completed.toIso8601String(),
+      'date_completed': date_completed?.toIso8601String(),
     };
   }
 
