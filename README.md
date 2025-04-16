@@ -20,10 +20,24 @@ PawsMatch is a Flutter-based application designed to help pet rescue organizatio
         <td>2025-04-13</td>
     </tr>
     <tr>
+        <td>IS.010.003</td>
+        <td>2025-04-16</td>
+    </tr>
+    <tr>
         <td>...</td>
         <td>...</td>
     </tr>
 </table>
+
+## IS.010.003 Release Notes
+- Implemented filtered pet loading to prevent showing already swiped or adopted pets
+- Added swipe inactive state tracking when adoption requests are submitted
+- Created comprehensive adoption request flow connecting swipes to adoption actions
+- Improved data fetching with proper error handling for network issues and timeouts
+- Enhanced service layer integration between different app features (swipes, adoptions, pets)
+- Implemented proper state management to maintain consistency across app views
+- Added validation and deduplication to prevent duplicate pet displays
+- Created a unified modal system for displaying adoption details with proper data connections
 
 ## IS.010.002 Release Notes
 - Completed overall implementation of surrendering functionality
@@ -44,3 +58,5 @@ PawsMatch is a Flutter-based application designed to help pet rescue organizatio
 
 ## Important Links
 - [Design Specs](https://github.com/repromantics01/ishira)
+- [Codebase](https://github.com/repromantics01/ishira-dev)
+- [Testing Timeline](https://docs.google.com/spreadsheets/d/1liEHsJwp6W05RSp2EH21Xep-ZbhAYTi4ZKHL7sBp9wY/edit?gid=0#gid=0)
