@@ -1,4 +1,3 @@
-!build/web/**
 !build_web.sh
 !vercel.json
 !pubspec.yaml
@@ -7,4 +6,12 @@
 !web/**
 !assets/**
 !.env
-!flutter-sdk/**
+.dart_tool/
+build/
+.idea/
+.vscode/
+android/
+ios/
+macos/
+windows/
+linux/
