@@ -1,5 +1,5 @@
-*
 !build/web/**
+!build_web.sh
 !vercel.json
 !pubspec.yaml
 !pubspec.lock
