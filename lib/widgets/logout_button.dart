@@ -28,12 +28,9 @@ class LogoutButton extends StatelessWidget {
               ],
             ),
           );
-          
-          // If confirmed, sign out and navigate to mobile homepage
           if (confirm == true) {
             await FirebaseAuth.instance.signOut();
             
-            // Use Navigator to go to MobileHomepage instead of using named route
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => const MobileHomepage(),
