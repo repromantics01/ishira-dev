@@ -7,6 +7,7 @@ import 'package:pawsmatch/pages/mobile/surrenderer/surrender_pet.dart';
 import 'package:pawsmatch/pages/mobile/surrenderer/organizations_listing.dart'; // Add this import
 import 'package:pawsmatch/pages/mobile/surrenderer/surrender_history.dart'; // Add this import
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pawsmatch/utils/navigation_helper.dart'; // Add this import
 
 class SurrendererDashboard extends StatefulWidget {
   const SurrendererDashboard({super.key});
@@ -471,7 +472,8 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
               child: IconButton(
                 icon: const Icon(Icons.person, color: Color(0xFF725F63)),
                 onPressed: () {
-                  // Add profile navigation logic
+                  // Use the navigation helper
+                  NavigationHelper.navigateToProfileSettings(context);
                 },
               ),
             ),

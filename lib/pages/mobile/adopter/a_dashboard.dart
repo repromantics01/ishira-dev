@@ -12,6 +12,7 @@ import 'package:pawsmatch/pages/mobile/adopter/view_adoptions.dart';
 import 'package:pawsmatch/models/pet.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/pages/mobile/adopter/pet_swiper_page.dart';
+import 'package:pawsmatch/utils/navigation_helper.dart'; // Add this import
 
 class AdopterDashboard extends StatefulWidget {
   const AdopterDashboard({Key? key}) : super(key: key);
@@ -594,7 +595,8 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
               child: IconButton(
                 icon: const Icon(Icons.person, color: Color(0xFF725F63)),
                 onPressed: () {
-                  // Add profile navigation logic
+                  // Use the navigation helper
+                  NavigationHelper.navigateToProfileSettings(context);
                 },
               ),
             ),

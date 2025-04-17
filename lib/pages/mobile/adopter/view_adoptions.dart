@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pawsmatch/models/adopt.dart';
 import 'package:pawsmatch/models/pet.dart';
 import 'package:pawsmatch/services/firebase_adopt_service.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
@@ -10,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:pawsmatch/pages/mobile/adopter/swiped_pets.dart';
 import 'package:pawsmatch/pages/mobile/adopter/a_dashboard.dart';
 import 'package:flutter/services.dart';
+import 'package:pawsmatch/utils/navigation_helper.dart';  
 
 class ViewAdoptionsPage extends StatefulWidget {
   const ViewAdoptionsPage({Key? key}) : super(key: key);
@@ -647,7 +647,7 @@ class _ViewAdoptionsPageState extends State<ViewAdoptionsPage> {
               child: IconButton(
                 icon: const Icon(Icons.person, color: Color(0xFF725F63)),
                 onPressed: () {
-                  // Add profile navigation logic
+                  NavigationHelper.navigateToProfileSettings(context);
                 },
               ),
             ),
