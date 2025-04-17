@@ -7,7 +7,7 @@ import 'package:pawsmatch/pages/mobile/surrenderer/surrender_pet.dart';
 import 'package:pawsmatch/pages/mobile/surrenderer/organizations_listing.dart'; // Add this import
 import 'package:pawsmatch/pages/mobile/surrenderer/surrender_history.dart'; // Add this import
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:pawsmatch/utils/navigation_helper.dart'; // Add this import
+import 'package:pawsmatch/utils/navigation_helper.dart'; 
 
 class SurrendererDashboard extends StatefulWidget {
   const SurrendererDashboard({super.key});
@@ -41,22 +41,12 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
     
     try {
       // Debug: Print before loading data
-      print('Loading user data...');
+      //print('Loading user data...');
       
-      // Get username from account service directly
       String username = await _accountService.getCurrentUsername();
-      print('Username loaded: $username');
-      
-      // Get email from account service directly
       String email = await _accountService.getCurrentEmail();
-      print('Email loaded: $email');
-      
-      // Get display name from user dashboard info
       Map<String, String> dashboardInfo = await _profileService.getUserDashboardInfo();
-      print('Dashboard info loaded: $dashboardInfo');
       String displayName = dashboardInfo['displayName'] ?? 'User';
-      
-      print('Final values - Username: $username, Email: $email, DisplayName: $displayName');
       
       setState(() {
         _username = username;
@@ -76,7 +66,6 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
     setState(() {
       _selectedIndex = index;
     });
-    // Add navigation logic here if needed
   }
 
   Widget _getBody() {
@@ -95,7 +84,6 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Hello message with username
                 Container(
                   padding: const EdgeInsets.only(left: 16.0, bottom: 16.0),
                   child: SizedBox(
@@ -124,7 +112,6 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
                   child: Stack(
                     clipBehavior: Clip.none, 
                     children: [
-                      // Container background
                       Positioned(
                         left: 0,
                         top: 0,
@@ -149,7 +136,6 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
                         ),
                       ),
                       
-                      // Profile image - centered vertically
                       Positioned(
                         left: 33,
                         top: 20, // Adjusted to center vertically
@@ -172,7 +158,6 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
                         ),
                       ),
                       
-                      // Column for name and email - aligned with profile image
                       Positioned(
                         left: 146,
                         top: 28, // Adjusted to align with profile image
@@ -202,7 +187,6 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
                           ],
                         ),
                       ),
-                      // Edit Profile Details button - adjusted position
                       Positioned(
                         left: 140,
                         bottom: 20,
@@ -213,7 +197,7 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
                           ),
                           child: TextButton(
                             onPressed: () {
-                              // TODO: Add navigation to edit profile page
+                              NavigationHelper.navigateToProfileSettings(context);
                             },
                             style: TextButton.styleFrom(
                               padding: EdgeInsets.symmetric(horizontal: 8, vertical: 0),
@@ -459,7 +443,7 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
               child: IconButton(
                 icon: const Icon(Icons.message, color: Color(0xFF725F63)),
                 onPressed: () {
-                  // Add inbox navigation logic
+                  NavigationHelper.navigateToInbox(context);
                 },
               ),
             ),

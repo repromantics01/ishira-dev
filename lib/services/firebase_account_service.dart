@@ -131,4 +131,17 @@ class DatabaseAccountService {
       print('Error updating email: $e');
     }
   }
+
+  Future<String?> getUserType(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      if (doc.exists && doc.data() != null) {
+        return doc.data()!['user_type'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting user type: $e');
+      return null;
+    }
+  }
 }

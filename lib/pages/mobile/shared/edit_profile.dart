@@ -258,11 +258,9 @@ class _EditProfileState extends State<EditProfile> {
                       ),
                       const SizedBox(height: 20),
                       
-                      // Last Name and Suffix in a row
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Last Name field (wider)
                           Expanded(
                             flex: 3,
                             child: _buildFormField(

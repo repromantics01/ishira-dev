@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/models/pet.dart';
+import 'package:pawsmatch/pages/mobile/shared/conversation_page.dart';
 import 'package:pawsmatch/services/firebase_adopt_service.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
@@ -495,31 +496,72 @@ class _ViewAdoptionsPageState extends State<ViewAdoptionsPage> {
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: Offset(0, -5),
-                    )
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: Offset(0, -5),
+                  )
                   ],
                 ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFECC8C0),
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Message Organization button - only show for approved adoptions
+                    if (status == 'Approved')
+                      ElevatedButton(
+                        onPressed: () => _navigateToConversation(adoptionDetails),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF725F63),
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          minimumSize: Size(double.infinity, 45),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.message, color: Colors.white, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Message Organization',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    
+                    // Add spacing only if we showed the message button
+                    if (status == 'Approved')
+                      SizedBox(height: 10),
+                      
+                    // Close button - always shown
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFECC8C0),
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        minimumSize: Size(double.infinity, 45),
+                      ),
+                      child: Text(
+                        'Close',
+                        style: TextStyle(
+                          color: Color(0xFF545454),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    'Close',
-                    style: TextStyle(
-                      color: Color(0xFF545454),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -634,7 +676,7 @@ class _ViewAdoptionsPageState extends State<ViewAdoptionsPage> {
               child: IconButton(
                 icon: const Icon(Icons.message, color: Color(0xFF725F63)),
                 onPressed: () {
-                  // TODO: Add message navigation logic
+                  NavigationHelper.navigateToInbox(context);
                 },
               ),
             ),
@@ -1264,5 +1306,22 @@ class _ViewAdoptionsPageState extends State<ViewAdoptionsPage> {
       final days = difference.inDays;
       return '$days days';
     }
+  }
+
+  Future<void> _navigateToConversation(Map<String, dynamic> adoptionDetails) async {
+    // Navigate to the conversation page
+    final String orgId = adoptionDetails['orgId'] as String;
+    final Pet pet = adoptionDetails['pet'];
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ConversationPage(
+          threadId: adoptionDetails['adoptId'], 
+          receiverId: orgId,
+          receiverName: 'About ${pet.pet_name}',
+        ),
+      ),
+    );
   }
 }

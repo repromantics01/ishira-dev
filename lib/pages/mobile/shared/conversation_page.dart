@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/message.dart';
-import 'package:pawsmatch/models/organization.dart';
 import 'package:pawsmatch/pages/mobile/surrenderer/organization_profile.dart';
+import 'package:pawsmatch/pages/mobile/adopter/organization_profile.dart';
 import 'package:pawsmatch/services/firebase_messaging_service.dart';
-import 'package:pawsmatch/services/firebase_organization_service.dart';
+import 'package:pawsmatch/services/firebase_profile_service.dart'; // Changed from account service
 import 'package:intl/intl.dart';
 
 class ConversationPage extends StatefulWidget {
@@ -25,6 +25,7 @@ class ConversationPage extends StatefulWidget {
 
 class _ConversationPageState extends State<ConversationPage> {
   final FirebaseMessagingService _messagingService = FirebaseMessagingService();
+  final FirebaseProfileService _profileService = FirebaseProfileService(); // Changed from account service
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
@@ -33,6 +34,7 @@ class _ConversationPageState extends State<ConversationPage> {
   List<Message> _localMessages = []; 
   bool _isLoadingFallback = false;
   bool _isLoadingOrg = false;
+  String? _userType; 
   
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _ConversationPageState extends State<ConversationPage> {
       _messagingService.markThreadAsRead(widget.threadId);
       _loadMessagesFallback();
     });
+    _getUserType();
   }
   
   Future<void> _loadMessagesFallback() async {
@@ -144,6 +147,26 @@ class _ConversationPageState extends State<ConversationPage> {
     }
   }
 
+  // Updated method to get user type from profile
+  Future<void> _getUserType() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Get profile data instead of account data
+        final profileData = await _profileService.getUserProfile(user.uid);
+        if (profileData != null && profileData.containsKey('user_type')) {
+          setState(() {
+            _userType = profileData['user_type'];
+          });
+          print('User type determined from profile: $_userType');
+        }
+      }
+    } catch (e) {
+      print('Error getting user type from profile: $e');
+    }
+  }
+
+  // Updated method to navigate to correct org profile based on user type
   Future<void> _navigateToOrgProfile() async {
     if (_isLoadingOrg) return;
     
@@ -155,14 +178,41 @@ class _ConversationPageState extends State<ConversationPage> {
       final organization = await _messagingService.organizationService.getOrganizationById(widget.receiverId);
       
       if (organization != null && mounted) {
-        Navigator.push(
-          context, 
-          MaterialPageRoute(
-            builder: (context) => OrganizationProfile(
-              organization: organization,
+        // Check user type from profile - normalized to lowercase for case insensitive comparison
+        final String userTypeNormalized = (_userType ?? '').toLowerCase();
+        
+        if (userTypeNormalized == 'adopter') {
+          Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (context) => AdopterOrganizationProfile(
+                organization: organization,
+              ),
             ),
-          ),
-        );
+          );
+        } else if (userTypeNormalized == 'surrenderer') {
+          Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (context) => OrganizationProfile(
+                organization: organization,
+              ),
+            ),
+          );
+        } else {
+          // Fallback for unknown user type
+          Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (context) => OrganizationProfile(
+                organization: organization,
+              ),
+            ),
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Unknown user type: $_userType, using default profile view')),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not load organization profile')),

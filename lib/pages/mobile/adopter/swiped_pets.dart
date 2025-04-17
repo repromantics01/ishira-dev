@@ -144,7 +144,7 @@ class _SwipedPetsPageState extends State<SwipedPetsPage> {
               child: IconButton(
                 icon: const Icon(Icons.message, color: Color(0xFF725F63)),
                 onPressed: () {
-                  // Add inbox navigation logic
+                  NavigationHelper.navigateToInbox(context);
                 },
               ),
             ),
