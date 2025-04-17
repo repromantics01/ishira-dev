@@ -1,12 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/date_symbols.dart';
-import 'package:pawsmatch/models/organization.dart';
 import 'package:pawsmatch/models/swipe.dart';
-import 'package:pawsmatch/services/firebase_account_service.dart';
-import 'package:pawsmatch/models/account.dart';
-import 'package:pawsmatch/models/pet.dart';
-import 'package:pawsmatch/services/firebase_pet_service.dart';
+
+
 
 const String SWIPE_COLLECTION_REF = "swipes";
 
@@ -23,10 +19,7 @@ class FirebaseSwipeService {
       toFirestore: (swipe, _) => swipe.toJson(),
     );
     _rawSwipeCollectionRef = _firestore.collection(SWIPE_COLLECTION_REF);
-  }
-
-  // Record a new swipe with the currently logged-in user
-  Future<bool> recordSwipe(String petId, bool liked) async {
+  }  Future<bool> recordSwipe(String petId, bool liked) async {
     try {
       // Get the current user's ID
       final User? user = _auth.currentUser;
