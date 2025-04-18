@@ -15,11 +15,9 @@ import 'package:pawsmatch/utils/firebase_helper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Show loading screen first
   runApp(LoadingApp());
   
   try {
-    // Load environment variables if needed
     if (!kIsWeb) {
       try {
         await dotenv.load(fileName: ".env");
@@ -30,28 +28,44 @@ void main() async {
       }
     }
     
-    // Initialize Firebase using our helper class
-    // This centralizes Firebase initialization and prevents duplicates
     try {
       await FirebaseHelper.ensureInitialized();
       print("Firebase initialization handled by FirebaseHelper");
     } catch (e) {
       print("Firebase initialization error: $e");
-      // Continue if possible - the app might still work with limited functionality
     }
     
-    // Initialize AppConfigService
     final configService = AppConfigService();
     await configService.initialize();
-    
-    // Initialize Supabase once
+
     await SupabaseClientService.initialize();
-    
-    // Call platform-specific initialization
+
     if (kIsWeb) {
       print("Starting web app");
-      await web.initializeApp(); // Other web-specific setup
-      runApp(const WebApp());
+      
+      if (kDebugMode) {
+        try {
+          print("Debug mode: using full initialization path");
+          await web.initializeApp();
+          print("Web initialization completed successfully");
+          runApp(const WebApp());
+        } catch (e, stack) {
+          print("Debug web initialization error: $e");
+          print("Stack trace: $stack");
+
+          runApp(WebApp(
+            useSimplifiedMode: true, 
+            errorMessage: "Debug mode initialization failed"
+          ));
+        }
+      } else {
+        print("Production mode: bypassing web.initializeApp() completely");
+
+        runApp(WebApp(
+          useSimplifiedMode: true,
+          errorMessage: "Welcome to PawsMatch! We're launching soon."
+        ));
+      }
     } else {
       print("Starting mobile platform initialization");
       await mobile.initializeMobilePlatform();
@@ -86,7 +100,6 @@ class LoadingApp extends StatelessWidget {
   }
 }
 
-// Error display screen
 class ErrorApp extends StatelessWidget {
   final String error;
 
@@ -140,7 +153,10 @@ class MobileApp extends StatelessWidget {
 
 // Web app class
 class WebApp extends StatelessWidget {
-  const WebApp({Key? key}) : super(key: key);
+  final bool useSimplifiedMode;
+  final String errorMessage;
+  
+  const WebApp({Key? key, this.useSimplifiedMode = false, this.errorMessage = ''}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +166,27 @@ class WebApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: WebHomepage(),
+      home: useSimplifiedMode 
+          ? Scaffold(
+              appBar: AppBar(title: Text('PawsMatch Web')),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Welcome to PawsMatch',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 20),
+                    Text(
+                      errorMessage.isNotEmpty ? errorMessage : 'We\'re experiencing technical difficulties.\nPlease check back later.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : WebHomepage(),
     );
   }
 }
