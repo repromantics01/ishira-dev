@@ -37,11 +37,18 @@ class Adopt {
         pet_id = json['pet_id'] as String? ?? 'unknown_pet_id',
         account_id = json['account_id'] as String? ?? 'unknown_account_id',
         org_id = json['org_id'] as String? ?? 'unknown_org_id',
-        application_status = ApplicationStatus.values.firstWhere((e) => e.toString() == 'ApplicationStatus.' + json['application_status']),
+        application_status = ApplicationStatus.values.firstWhere(
+          (e) => e.toString() == 'ApplicationStatus.' + (json['application_status']?.toString() ?? 'Pending'),
+          orElse: () => ApplicationStatus.Pending,
+        ),
         adopter_comment = json['adopter_comment'] as String? ?? '',
-        date_reviewed = DateTime.parse(json['date_reviewed'] as String),
-        date_submitted = DateTime.parse(json['date_submitted'] as String),
-        date_completed = DateTime.parse(json['date_completed'] as String);
+        date_reviewed = json['date_reviewed'] == null || (json['date_reviewed'] as String).isEmpty
+            ? null
+            : DateTime.tryParse(json['date_reviewed'] as String),
+        date_submitted = DateTime.tryParse(json['date_submitted'] as String? ?? '') ?? DateTime.now(),
+        date_completed = json['date_completed'] == null || (json['date_completed'] as String).isEmpty
+            ? null
+            : DateTime.tryParse(json['date_completed'] as String);
 
   Adopt copyWith({
     String? adopt_id,
