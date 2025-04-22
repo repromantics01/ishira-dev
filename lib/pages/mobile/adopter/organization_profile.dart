@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/models/organization.dart';
 import 'package:intl/intl.dart';
+import 'package:pawsmatch/pages/mobile/shared/conversation_page.dart';
+import 'package:pawsmatch/services/firebase_messaging_service.dart';
+import 'package:pawsmatch/utils/navigation_helper.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:pawsmatch/services/firebase_photo_service.dart';
 
@@ -18,6 +21,8 @@ class AdopterOrganizationProfile extends StatefulWidget {
 class _AdopterOrganizationProfileState
     extends State<AdopterOrganizationProfile> {
   final FirebasePhotoService _photoService = FirebasePhotoService();
+  bool _isSendingMessage = false;
+  final FirebaseMessagingService _messagingService = FirebaseMessagingService();
 
   final List<String> _photoUrls = [];
   bool _isLoading = true;
@@ -65,6 +70,41 @@ class _AdopterOrganizationProfileState
     if (mounted) {
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _navigateToConversation() async {
+    if (_isSendingMessage) return; 
+
+    setState(() {
+      _isSendingMessage = true;
+    });
+
+    try {
+      // Get or create a message thread with this organization
+      final String threadId = await _messagingService.createOrGetThreadId(
+        widget.organization.org_id
+      );
+
+      // Navigate to conversation page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConversationPage(
+            threadId: threadId,
+            receiverId: widget.organization.org_id,
+            receiverName: widget.organization.org_name,
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error starting conversation: ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isSendingMessage = false;
       });
     }
   }
@@ -740,10 +780,7 @@ class _AdopterOrganizationProfileState
                   width: screenWidth * 0.6,
                   margin: EdgeInsets.only(bottom: 60),
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Show message dialog
-                      _showMessageDialog(context);
-                    },
+                    onPressed: _navigateToConversation,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF725F63),
                       foregroundColor: Colors.white,
@@ -769,91 +806,6 @@ class _AdopterOrganizationProfileState
       ),
     );
   }
-
-  void _showMessageDialog(BuildContext context) {
-    final TextEditingController messageController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Message to ${widget.organization.org_name}',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF725F63),
-                ),
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: messageController,
-                decoration: InputDecoration(
-                  hintText: 'Type your message here...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Color(0xFF725F63)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Color(0xFF725F63), width: 2),
-                  ),
-                ),
-                maxLines: 6,
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(color: Colors.grey[700]),
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Process message sending here
-                      Navigator.of(context).pop();
-                      // Show confirmation
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              'Message sent to ${widget.organization.org_name}'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF725F63),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text('Send Message'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   // Helper method to build contact items with icons - added onTap parameter
   Widget _buildContactItem(IconData icon, String label, String value,
       {VoidCallback? onTap}) {

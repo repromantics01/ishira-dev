@@ -8,6 +8,7 @@ import 'package:pawsmatch/pages/mobile/adopter/swiped_pet_profile.dart';
 import 'package:pawsmatch/pages/mobile/adopter/view_adoptions.dart';
 import 'package:pawsmatch/pages/mobile/adopter/a_dashboard.dart';
 import 'package:flutter/services.dart';
+import 'package:pawsmatch/utils/navigation_helper.dart';
 
 class SwipedPetsPage extends StatefulWidget {
   const SwipedPetsPage({Key? key}) : super(key: key);
@@ -143,7 +144,7 @@ class _SwipedPetsPageState extends State<SwipedPetsPage> {
               child: IconButton(
                 icon: const Icon(Icons.message, color: Color(0xFF725F63)),
                 onPressed: () {
-                  // Add inbox navigation logic
+                  NavigationHelper.navigateToInbox(context);
                 },
               ),
             ),
@@ -156,7 +157,7 @@ class _SwipedPetsPageState extends State<SwipedPetsPage> {
               child: IconButton(
                 icon: const Icon(Icons.person, color: Color(0xFF725F63)),
                 onPressed: () {
-                  // Add profile navigation logic
+                  NavigationHelper.navigateToProfileSettings(context);
                 },
               ),
             ),

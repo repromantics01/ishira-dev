@@ -101,4 +101,47 @@ class FirebaseProfileService {
       };
     }
   }
+
+  // Implement getUserProfile method
+  Future<Map<String, dynamic>?> getUserProfile(String uid) async {
+    try {
+      final profileQuery = await _firestore
+          .collection(PROFILE_COLLECTION_REF)
+          .where('account_id', isEqualTo: uid)
+          .limit(1)
+          .get();
+      
+      if (profileQuery.docs.isNotEmpty) {
+        return profileQuery.docs.first.data();
+      }
+      return null;
+    } catch (e) {
+      print('Error getting user profile: $e');
+      return null;
+    }
+  }
+
+  // Add this method to update profile
+  Future<void> updateProfile(String uid, Map<String, dynamic> data) async {
+    try {
+      final profileQuery = await _firestore
+          .collection(PROFILE_COLLECTION_REF)
+          .where('account_id', isEqualTo: uid)
+          .limit(1)
+          .get();
+      
+      if (profileQuery.docs.isNotEmpty) {
+        await _firestore
+            .collection(PROFILE_COLLECTION_REF)
+            .doc(profileQuery.docs.first.id)
+            .update(data);
+      } else {
+        print('No profile found to update');
+        throw Exception('Profile not found');
+      }
+    } catch (e) {
+      print('Error updating profile: $e');
+      throw e;
+    }
+  }
 }

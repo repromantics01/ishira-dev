@@ -27,7 +27,8 @@ class Account {
 
   Account.fromJson(Map<String, dynamic> json)
       : account_id = json['account_id'] as String,
-        account_type = AccountType.values.firstWhere((e) => e.toString() == 'AccountType.' + json['account_type']),
+        // FIX: Accept both "OrgAdmin" and "org_admin" (and other case variants)
+        account_type = _parseAccountType(json['account_type']),
         account_username = json['account_username'] as String,
         account_email = json['account_email'] as String,
         account_password = json['account_password'] as String,
@@ -51,9 +52,31 @@ class Account {
     );
   }
 
+  static AccountType _parseAccountType(dynamic value) {
+    if (value is AccountType) return value;
+    final str = value.toString();
+    switch (str) {
+      case 'OrgAdmin':
+      case 'org_admin':
+      case 'orgadmin':
+      case 'ORGADMIN':
+        return AccountType.OrgAdmin;
+      case 'Moderator':
+      case 'moderator':
+        return AccountType.Moderator;
+      case 'User':
+      case 'user':
+        return AccountType.User;
+      default:
+        // fallback to User if unknown
+        return AccountType.User;
+    }
+  }
+
   Map<String, dynamic?> toJson() {
     return {
       'account_id': account_id,
+      // Always save as "OrgAdmin", "User", "Moderator" for consistency
       'account_type': account_type.toString().split('.').last,
       'account_username': account_username,
       'account_email': account_email,

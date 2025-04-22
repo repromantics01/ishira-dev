@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/models/organization.dart';
-import 'package:intl/intl.dart';
+import 'package:pawsmatch/pages/mobile/shared/conversation_page.dart';  // Add this import
 import 'package:pawsmatch/pages/mobile/surrenderer/surrender_pet.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:pawsmatch/services/firebase_organization_service.dart';
+import 'package:pawsmatch/services/firebase_messaging_service.dart';  // Add this import
 
 class OrganizationProfile extends StatefulWidget {
   final Organization organization;
@@ -17,6 +18,8 @@ class OrganizationProfile extends StatefulWidget {
 class _OrganizationProfileState extends State<OrganizationProfile> {
   final FirebasePhotoService _photoService = FirebasePhotoService();
   final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
+  final FirebaseMessagingService _messagingService = FirebaseMessagingService();  // Add this line
+  bool _isSendingMessage = false;  // Add this line to track message navigation state
   
   final List<String> _photoUrls = [];
   bool _isLoading = true;
@@ -65,6 +68,42 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
     if (mounted) {
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  // Add this method to handle message navigation
+  Future<void> _navigateToConversation() async {
+    if (_isSendingMessage) return; 
+
+    setState(() {
+      _isSendingMessage = true;
+    });
+
+    try {
+      // Get or create a message thread with this organization
+      final String threadId = await _messagingService.createOrGetThreadId(
+        widget.organization.org_id
+      );
+
+      // Navigate to conversation page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConversationPage(
+            threadId: threadId,
+            receiverId: widget.organization.org_id,
+            receiverName: widget.organization.org_name,
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error starting conversation: ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isSendingMessage = false;
       });
     }
   }
@@ -741,9 +780,7 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                     Container(
                       width: screenWidth * 0.6,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // TODO: Implement send message functionality
-                        },
+                        onPressed: _navigateToConversation,  // Replace with this
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFEFCECB),
                           foregroundColor: const Color(0xFF1E2C2B),
@@ -756,14 +793,23 @@ class _OrganizationProfileState extends State<OrganizationProfile> {
                           ),
                           padding: EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: Text(
-                          'SEND MESSAGE',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 1.25,
-                          ),
-                        ),
+                        child: _isSendingMessage  // Update to show loading state
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: const Color(0xFF1E2C2B),
+                              ),
+                            )
+                          : Text(
+                              'SEND MESSAGE',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 1.25,
+                              ),
+                            ),
                       ),
                     ),
                     SizedBox(height: 16),
