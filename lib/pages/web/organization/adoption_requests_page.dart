@@ -2,12 +2,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:pawsmatch/models/pet.dart';
 import 'org_sidebar.dart';
 import 'package:pawsmatch/services/firebase_adopt_service.dart';
 import 'package:pawsmatch/models/adopt.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
+import 'package:pawsmatch/services/firebase_pet_service.dart';
+import 'package:pawsmatch/widgets/request_details_modal.dart';
 
 class AdoptionRequestsPage extends StatefulWidget {
   const AdoptionRequestsPage({super.key});
@@ -22,12 +25,14 @@ class _AdoptionRequestsPageState extends State<AdoptionRequestsPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final DatabaseAccountService _accountService = DatabaseAccountService();
   final FirebaseProfileService _profileService = FirebaseProfileService();
+  final FirebasePetService _petService = FirebasePetService();
 
   bool _isLoading = true;
   String _error = '';
   List<Adopt> _adoptionRequests = [];
   Map<String, Account> _userAccounts = {};
   Map<String, Map<String, dynamic>> _userProfiles = {};
+  Map<String, Pet> _petMap = {};
   
   String _sortBy = 'Date';
   String _filterBy = 'All';
@@ -126,6 +131,24 @@ class _AdoptionRequestsPageState extends State<AdoptionRequestsPage> {
           }
         } catch (e) {
           print('Error fetching account info: $e');
+        }
+      }
+      
+      // Add pet fetching:
+      for (var adopt in adopts) {
+        try {
+          // Get pet info if not already fetched
+          if (!_petMap.containsKey(adopt.pet_id)) {
+            try {
+              final pet = await _petService.getPetById(adopt.pet_id);
+              _petMap[adopt.pet_id] = pet;
+              print('Fetched pet: ${pet.pet_name}');
+            } catch (petError) {
+              print('Error fetching pet ${adopt.pet_id}: $petError');
+            }
+          }
+        } catch (e) {
+          print('Error fetching pet data: $e');
         }
       }
       
@@ -606,25 +629,30 @@ class _AdoptionRequestsPageState extends State<AdoptionRequestsPage> {
                                           Expanded(
                                             flex: 30,
                                             child: Center(
-                                              child: Container(
-                                                height: 40,
-                                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                decoration: ShapeDecoration(
-                                                  shape: RoundedRectangleBorder(
-                                                    side: BorderSide(
-                                                      width: 1.50,
-                                                      color: const Color(0xFF545454),
+                                              child: InkWell(
+                                                onTap: () {
+                                                  _showDetailsModal(context, adopt);
+                                                },
+                                                child: Container(
+                                                  height: 40,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                  decoration: ShapeDecoration(
+                                                    shape: RoundedRectangleBorder(
+                                                      side: BorderSide(
+                                                        width: 1.50,
+                                                        color: const Color(0xFF545454),
+                                                      ),
+                                                      borderRadius: BorderRadius.circular(12),
                                                     ),
-                                                    borderRadius: BorderRadius.circular(12),
                                                   ),
-                                                ),
-                                                child: Text(
-                                                  'View Details',
-                                                  style: TextStyle(
-                                                    color: const Color(0xFF545454),
-                                                    fontSize: 12,
-                                                    fontFamily: 'Inter',
-                                                    fontWeight: FontWeight.w600,
+                                                  child: Text(
+                                                    'View Details',
+                                                    style: TextStyle(
+                                                      color: const Color(0xFF545454),
+                                                      fontSize: 12,
+                                                      fontFamily: 'Inter',
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -712,6 +740,96 @@ class _AdoptionRequestsPageState extends State<AdoptionRequestsPage> {
           ],
         ],
       ),
+    );
+  }
+
+  // Add this method to show the modal:
+  void _showDetailsModal(BuildContext context, Adopt adopt) {
+    final pet = _petMap[adopt.pet_id];
+    final account = _userAccounts[adopt.account_id];
+    final profile = _userProfiles[adopt.account_id];
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return RequestDetailsModal(
+          request: adopt,
+          pet: pet,
+          userAccount: account,
+          userProfile: profile,
+          onClose: () {
+            Navigator.of(context).pop();
+          },
+          onApprove: adopt.application_status == ApplicationStatus.Pending ? () async {
+            try {
+              // Update the adoption status in Firestore
+              await _firestore.collection('adopt').doc(adopt.adopt_id).update({
+                'application_status': ApplicationStatus.Approved.toString().split('.').last,
+                'date_reviewed': DateTime.now().toIso8601String()
+              });
+              
+              // Close the modal
+              Navigator.of(context).pop();
+              
+              // Refresh the data
+              _loadAdoptionRequests();
+              
+              // Show a success message
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Adoption request approved successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } catch (e) {
+              print('Error approving adoption: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to approve adoption: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          } : null,
+          onReject: adopt.application_status == ApplicationStatus.Pending ? () async {
+            try {
+              // Update the adoption status in Firestore
+              await _firestore.collection('adopt').doc(adopt.adopt_id).update({
+                'application_status': ApplicationStatus.Rejected.toString().split('.').last,
+                'date_reviewed': DateTime.now().toIso8601String()
+              });
+              
+              // Close the modal
+              Navigator.of(context).pop();
+              
+              // Refresh the data
+              _loadAdoptionRequests();
+              
+              // Show a success message
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Adoption request rejected'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            } catch (e) {
+              print('Error rejecting adoption: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to reject adoption: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          } : null,
+          onMessage: () {
+            // Implement message functionality
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Messaging not implemented yet')),
+            );
+          },
+        );
+      },
     );
   }
 }

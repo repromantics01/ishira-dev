@@ -10,6 +10,7 @@ import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
 import 'package:pawsmatch/models/pet.dart';
+import 'package:pawsmatch/widgets/request_details_modal.dart';
 
 class SurrenderRequestsPage extends StatefulWidget {
   const SurrenderRequestsPage({super.key});
@@ -343,7 +344,7 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
                           isExpanded: true,
                           underline: SizedBox(),
                           value: _filterBy,
-                          items: ['All', 'Pending', 'Approved', 'Rejected'].map((String value) {
+                          items: ['All', 'Pending', 'Approved', 'Rejected', 'Completed', 'Cancelled'].map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
                               child: Text(
@@ -643,84 +644,34 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
                                               mainAxisAlignment: MainAxisAlignment.center,
                                               children: [
                                                 // View button
-                                                Container(
-                                                  height: 40,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                  decoration: ShapeDecoration(
-                                                    shape: RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        width: 1.50,
-                                                        color: const Color(0xFF545454),
+                                                InkWell(
+                                                  onTap: () {
+                                                    _showDetailsModal(context, surrender);
+                                                  },
+                                                  child: Container(
+                                                    height: 40,
+                                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                    decoration: ShapeDecoration(
+                                                      shape: RoundedRectangleBorder(
+                                                        side: BorderSide(
+                                                          width: 1.50,
+                                                          color: const Color(0xFF545454),
+                                                        ),
+                                                        borderRadius: BorderRadius.circular(12),
                                                       ),
-                                                      borderRadius: BorderRadius.circular(12),
                                                     ),
-                                                  ),
-                                                  child: Text(
-                                                    'View Details',
-                                                    style: TextStyle(
-                                                      color: const Color(0xFF545454),
-                                                      fontSize: 12,
-                                                      fontFamily: 'Inter',
-                                                      fontWeight: FontWeight.w600,
+                                                    child: Text(
+                                                      'View Details',
+                                                      style: TextStyle(
+                                                        color: const Color(0xFF545454),
+                                                        fontSize: 12,
+                                                        fontFamily: 'Inter',
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
                                                 SizedBox(width: 8),
-                                                // Only show action buttons for Pending requests
-                                                if (surrender.surrender_status == SurrenderStatus.Pending)
-                                                  Row(
-                                                    children: [
-                                                      // Approve button
-                                                      Container(
-                                                        height: 40,
-                                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                                        decoration: ShapeDecoration(
-                                                          color: Colors.green.shade100,
-                                                          shape: RoundedRectangleBorder(
-                                                            side: BorderSide(
-                                                              width: 1.50,
-                                                              color: Colors.green.shade700,
-                                                            ),
-                                                            borderRadius: BorderRadius.circular(12),
-                                                          ),
-                                                        ),
-                                                        child: Text(
-                                                          'Approve',
-                                                          style: TextStyle(
-                                                            color: Colors.green.shade800,
-                                                            fontSize: 12,
-                                                            fontFamily: 'Inter',
-                                                            fontWeight: FontWeight.w600,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      SizedBox(width: 8),
-                                                      // Reject button
-                                                      Container(
-                                                        height: 40,
-                                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                                        decoration: ShapeDecoration(
-                                                          color: Colors.red.shade100,
-                                                          shape: RoundedRectangleBorder(
-                                                            side: BorderSide(
-                                                              width: 1.50,
-                                                              color: Colors.red.shade700,
-                                                            ),
-                                                            borderRadius: BorderRadius.circular(12),
-                                                          ),
-                                                        ),
-                                                        child: Text(
-                                                          'Reject',
-                                                          style: TextStyle(
-                                                            color: Colors.red.shade800,
-                                                            fontSize: 12,
-                                                            fontFamily: 'Inter',
-                                                            fontWeight: FontWeight.w600,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
                                               ],
                                             ),
                                           ),
@@ -806,6 +757,30 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
           ],
         ],
       ),
+    );
+  }
+
+  void _showDetailsModal(BuildContext context, Surrender surrender) {
+    final pet = _pets[surrender.pet_id];
+    final account = _userAccounts[surrender.account_id];
+    final profile = _userProfiles[surrender.account_id];
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return RequestDetailsModal(
+          request: surrender,
+          pet: pet,
+          userAccount: account,
+          userProfile: profile,
+          onClose: () {
+            Navigator.of(context).pop();
+            // Refresh the data when modal is closed
+            _loadSurrenderRequests();
+          },
+          // No need for onApprove/onReject - the RequestDetailsModal now handles this internally
+        );
+      },
     );
   }
 }

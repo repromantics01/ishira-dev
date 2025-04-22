@@ -6,6 +6,8 @@ enum SurrenderStatus {
   Pending,
   Approved,
   Rejected,
+  Completed,
+  Cancelled,
 } 
 
 class Surrender {
