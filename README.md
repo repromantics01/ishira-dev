@@ -34,6 +34,8 @@ PawsMatch is a Flutter-based application designed to help pet rescue organizatio
 </table>
 
 ## IS.010.004 Release Notes
+- Enabled user account and profile editing
+- Implemented Firebase services for modifying user account credentials and profile data
 - Implemented a complete messaging system between organizations and users
 - Added real-time message rendering 
 - Created a thread-based conversation interface with date grouping
