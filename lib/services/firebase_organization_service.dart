@@ -48,20 +48,6 @@ class FirebaseOrganizationService {
     }
   }
 
-  Future<String> getOrganizationId(String orgId) async {
-    try {
-      final querySnapshot = await _organizationCollectionRef
-          .where('org_id', isEqualTo: orgId)
-          .limit(1)
-          .get();
-      if (querySnapshot.docs.isNotEmpty) {
-        return querySnapshot.docs.first.reference.id;
-      }
-    } catch (e) {
-      print('Error getting organization id: $e');
-    }
-    return ''; // Return an empty string or handle the error appropriately
-  }
 
   Future<List<Organization>> getUnverifiedOrgs() async {
     try {
@@ -75,10 +61,10 @@ class FirebaseOrganizationService {
     }
   }
 
-  Future<Organization?> getOrganizationById(String orgId) async {
+  Future<Organization?> getOrganizationById(String accountId) async {
     try {
       final querySnapshot = await _organizationCollectionRef
-          .where('org_id', isEqualTo: orgId)
+          .where('admin_ids', arrayContains: accountId)
           .limit(1)
           .get();
           
@@ -87,12 +73,37 @@ class FirebaseOrganizationService {
       }
       
       // If not found by org_id field, try to get directly by document ID
-      final docSnapshot = await _organizationCollectionRef.doc(orgId).get();
+      final docSnapshot = await _organizationCollectionRef.doc(accountId).get();
       if (docSnapshot.exists) {
         return docSnapshot.data();
       }
       
-      print('Organization not found with id: $orgId');
+      print('Organization not found with id: $accountId');
+      return null;
+    } catch (e) {
+      print('Error getting organization by id: $e');
+      return null;
+    }
+  }
+
+   Future<String?> getOrganizationIDById(String accountId) async {
+    try {
+      final querySnapshot = await _organizationCollectionRef
+          .where('admin_ids', arrayContains: accountId)
+          .limit(1)
+          .get();
+          
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first.id;
+      }
+      
+      // If not found by org_id field, try to get directly by document ID
+      final docSnapshot = await _organizationCollectionRef.doc(accountId).get();
+      if (docSnapshot.exists) {
+        return docSnapshot.id;
+      }
+      
+      print('Organization not found with id: $accountId');
       return null;
     } catch (e) {
       print('Error getting organization by id: $e');
@@ -241,5 +252,76 @@ class FirebaseOrganizationService {
       ),
     ];
   }
+  
+  // Cache organization IDs for better performance
+  final Map<String, String> _orgIdCache = {};
+
+  // Get all organizations
+  Stream<List<Organization>> getOrganizations() {
+    return _firestore
+        .collection('organizations')
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) {
+                final data = doc.data();
+                data['org_id'] = doc.id;
+                return Organization.fromJson(data);
+              })
+              .toList();
+        });
+  }
+
+  // Get organization by ID
+  // Future<Organization?> getOrganizationById(String orgId) async {
+  //   try {
+  //     final docSnapshot = await _firestore.collection('organizations').doc(orgId).get();
+  //     if (!docSnapshot.exists) {
+  //       return null;
+  //     }
+  //     final data = docSnapshot.data()!;
+  //     data['org_id'] = docSnapshot.id;
+  //     return Organization.fromJson(data);
+  //   } catch (e) {
+  //     print('Error getting organization by ID: $e');
+  //     return null;
+  //   }
+  // }
+
+  // // Get organization ID by admin user ID
+  // Future<String?> getOrganizationIDById(String userId) async {
+  //   // Check cache first
+  //   if (_orgIdCache.containsKey(userId)) {
+  //     return _orgIdCache[userId];
+  //   }
+    
+  //   try {
+  //     // Query organizations where admin_ids contains the user ID
+  //     final querySnapshot = await _firestore
+  //         .collection('organizations')
+  //         .where('admin_ids', arrayContains: userId)
+  //         .limit(1)
+  //         .get();
+
+  //     if (querySnapshot.docs.isEmpty) {
+  //       return null;
+  //     }
+
+  //     final orgId = querySnapshot.docs.first.id;
+      
+  //     // Cache the result
+  //     _orgIdCache[userId] = orgId;
+      
+  //     return orgId;
+  //   } catch (e) {
+  //     print('Error getting organization ID for user $userId: $e');
+  //     return null;
+  //   }
+  // }
+  
+  // // Clear cache (useful for testing)
+  // void clearCache() {
+  //   _orgIdCache.clear();
+  // }
 }
 
