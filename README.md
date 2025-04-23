@@ -24,15 +24,33 @@ PawsMatch is a Flutter-based application designed to help pet rescue organizatio
         <td>2025-04-16</td>
     </tr>
     <tr>
+        <td>IS.010.004</td>
+        <td>2025-04-23</td>
+    </tr>
+    <tr>
         <td>...</td>
         <td>...</td>
     </tr>
 </table>
 
+## IS.010.004 Release Notes
+- Implemented a complete messaging system between organizations and users
+- Added real-time message rendering 
+- Created a thread-based conversation interface with date grouping
+- Added fallback methods to handle potential Firestore indexing issues
+- Implemented proper error handling and loading states
+- Created a comprehensive pet management page with search functionality
+- Added sorting options (Name, Age, Recently Added)
+- Implemented filtering by status (Available, Adopted, Pending, etc.)
+- Designed responsive pet card grid with status indicators
+- Added empty states with contextual messaging based on filter settings
+- Created unified navigation via sidebar
+- Added edit functionality for organization details
+
 ## IS.010.003 Release Notes
 - Implemented filtered pet loading to prevent showing already swiped or adopted pets
 - Added swipe inactive state tracking when adoption requests are submitted
-- Created comprehensive adoption request flow connecting swipes to adoption actions
+- Created a comprehensive adoption request flow connecting swipes to adoption actions
 - Improved data fetching with proper error handling for network issues and timeouts
 - Enhanced service layer integration between different app features (swipes, adoptions, pets)
 - Implemented proper state management to maintain consistency across app views
