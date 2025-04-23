@@ -35,8 +35,16 @@ class _InboxPageState extends State<InboxPage> {
     });
     
     try {
-      // Attempt to get threads using fallback method
-      final threads = await _messagingService.getThreadsForCurrentUserFallback();
+      // Get current user ID
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      // Attempt to get threads using fallback method - explicitly pass current user ID
+      final threads = await _messagingService.getThreadsForCurrentUserFallback(
+        organizationId: currentUser.uid
+      );
       
       if (mounted) {
         setState(() {

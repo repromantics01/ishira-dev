@@ -822,6 +822,44 @@ class _AdoptionRequestsPageState extends State<AdoptionRequestsPage> {
               );
             }
           } : null,
+          onComplete: adopt.application_status == ApplicationStatus.Approved ? () async {
+            try {
+              // Update the adoption status to Completed
+              await _firestore.collection('adopt').doc(adopt.adopt_id).update({
+                'application_status': ApplicationStatus.Completed.toString().split('.').last,
+                'date_completed': DateTime.now().toIso8601String()
+              });
+              
+              // Also update the pet status to Adopted
+              if (pet != null) {
+                await _firestore.collection('pet').doc(pet.pet_id).update({
+                  'pet_status': PetStatus.Adopted.toString().split('.').last
+                });
+              }
+              
+              // Close the modal
+              Navigator.of(context).pop();
+              
+              // Refresh the data
+              _loadAdoptionRequests();
+              
+              // Show a success message
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Adoption process completed successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } catch (e) {
+              print('Error completing adoption: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to complete adoption: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          } : null,
           onMessage: () {
             // Implement message functionality
             ScaffoldMessenger.of(context).showSnackBar(
