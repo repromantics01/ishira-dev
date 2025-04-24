@@ -207,5 +207,17 @@ class FirebasePetService {
       rethrow;
     }
   }
+
+  // Add a method to update a pet
+  Future<bool> updatePet(Pet pet) async {
+    try {
+      await _petCollectionRef.doc(pet.pet_id).update(pet.toJson());
+      print('Successfully updated pet ${pet.pet_name}');
+      return true;
+    } catch (e) {
+      print('Error updating pet: $e');
+      return false;
+    }
+  }
 }
 

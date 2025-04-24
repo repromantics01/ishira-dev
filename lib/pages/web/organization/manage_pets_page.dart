@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/pet.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
+import 'package:pawsmatch/widgets/pet_details_modal.dart';
+import 'package:pawsmatch/widgets/pet_adoption_requests_dialog.dart'; // Add this import
+import 'package:pawsmatch/widgets/edit_pet_modal.dart'; // Add this import
 import 'org_sidebar.dart';
 
 class ManagePetsPage extends StatefulWidget {
@@ -694,9 +697,8 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
                   height: 32,
                   child: OutlinedButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Edit pet functionality coming soon!')),
-                      );
+                      // Show pet details modal instead of SnackBar
+                      _showPetDetailsModal(pet);
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF545454),
@@ -707,7 +709,7 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
                       padding: EdgeInsets.zero,
                     ),
                     child: Text(
-                      'EDIT DETAILS',
+                      'VIEW DETAILS',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -721,6 +723,69 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // New method to show pet details modal
+  void _showPetDetailsModal(Pet pet) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return PetDetailsModal(
+          pet: pet,
+          onClose: () {
+            Navigator.of(context).pop();
+          },
+          onUpdatePet: () {
+            Navigator.of(context).pop();
+            _showUpdatePetDialog(pet);
+          },
+          onViewAdoptionRequests: () {
+            Navigator.of(context).pop();
+            _viewAdoptionRequests(pet);
+          },
+        );
+      },
+    );
+  }
+
+  // Method to show update pet dialog
+  void _showUpdatePetDialog(Pet pet) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return EditPetModal(
+          pet: pet,
+          onClose: () {
+            Navigator.of(context).pop();
+          },
+          onSuccess: () {
+            // Refresh pet list after update
+            _loadPets();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Pet details updated successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Method to view adoption requests for a pet
+  void _viewAdoptionRequests(Pet pet) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return PetAdoptionRequestsDialog(
+          pet: pet,
+          onClose: () {
+            Navigator.of(context).pop();
+          },
+        );
+      },
     );
   }
 

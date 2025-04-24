@@ -10,7 +10,16 @@ import 'package:pawsmatch/services/firebase_profile_service.dart';
 import 'package:pawsmatch/widgets/message_thread_view.dart';
 
 class MessagesPage extends StatefulWidget {
-  const MessagesPage({super.key});
+  final String? initialThreadId;
+  final String? recipientId;
+  final String? recipientName;
+
+  const MessagesPage({
+    Key? key, 
+    this.initialThreadId,
+    this.recipientId,
+    this.recipientName,
+  }) : super(key: key);
 
   @override
   State<MessagesPage> createState() => _MessagesPageState();
@@ -44,6 +53,11 @@ class _MessagesPageState extends State<MessagesPage> {
     
     // Load threads with fallback immediately in case stream fails
     _loadThreadsFallback();
+
+    // If we have a thread ID, open that conversation immediately
+    if (widget.initialThreadId != null) {
+      _openThread(widget.initialThreadId!, widget.recipientId, widget.recipientName);
+    }
   }
   
   // Initialize organization data
@@ -245,6 +259,12 @@ class _MessagesPageState extends State<MessagesPage> {
     }).toList();
   }
   
+  // Method to open a specific conversation thread
+  void _openThread(String threadId, String? recipientId, String? recipientName) {
+    // Implementation would load messages for this thread
+    print('Opening thread: $threadId with $recipientName (ID: $recipientId)');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
