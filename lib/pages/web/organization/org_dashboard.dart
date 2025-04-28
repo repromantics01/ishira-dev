@@ -397,13 +397,8 @@ class _OrganizationDashboardState extends State<OrganizationDashboard> {
                     width: 87.29,
                     height: 85.45,
                     decoration: ShapeDecoration(
-                      image: DecorationImage(
-                        image: _organization?.logo_url != null && _organization!.logo_url!.isNotEmpty
-                            ? NetworkImage(_organization!.logo_url!)
-                            : const NetworkImage("https://placehold.co/87x85?text=Logo"),
-                        fit: BoxFit.cover,
-                        onError: (error, stackTrace) => {},
-                      ),
+                      // Handle logo explicitly instead of relying on DecorationImage
+                      color: Colors.white,
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
                           width: 1,
@@ -411,6 +406,49 @@ class _OrganizationDashboardState extends State<OrganizationDashboard> {
                         ),
                         borderRadius: BorderRadius.circular(92.50),
                       ),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(90),
+                      child: _organization?.logo_url != null && _organization!.logo_url!.isNotEmpty
+                        ? Image.network(
+                            _organization!.logo_url!,
+                            fit: BoxFit.cover,
+                            width: 87.29,
+                            height: 85.45,
+                            errorBuilder: (context, error, stackTrace) {
+                              print("Error loading organization logo: $error");
+                              return Center(
+                                child: Icon(
+                                  Icons.pets,
+                                  size: 40,
+                                  color: const Color(0xFF725F63),
+                                ),
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: SizedBox(
+                                  width: 30,
+                                  height: 30,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF34C2BB)),
+                                    value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Icon(
+                              Icons.pets,
+                              size: 40,
+                              color: const Color(0xFF725F63),
+                            ),
+                          ),
                     ),
                   ),
                 ),

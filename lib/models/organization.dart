@@ -8,6 +8,7 @@ class Organization {
   DateTime date_created;
   List<String> admin_ids;
   bool isVerified;
+  bool isRejected; // Add rejection status field
   
   String? location;
   String? address;
@@ -30,6 +31,7 @@ class Organization {
     required this.date_created,
     required this.admin_ids,
     this.isVerified = false,
+    this.isRejected = false, // Default to not rejected
     this.location,
     this.address,
     this.about,
@@ -52,7 +54,7 @@ class Organization {
         date_created = _parseDateTime(json['date_created']),
         admin_ids = _parseStringList(json['admin_ids']),
         isVerified = json['isVerified'] as bool? ?? false,
-        // Additional fields
+        isRejected = json['isRejected'] as bool? ?? false, // Parse isRejected with default false
         location = json['location'] as String?,
         address = json['address'] as String?,
         about = json['about'] as String?,
@@ -138,6 +140,7 @@ class Organization {
     DateTime? date_created,
     List<String>? admin_ids,
     bool? isVerified,
+    bool? isRejected, // Add to copyWith
     String? location,
     String? address,
     String? about,
@@ -159,6 +162,7 @@ class Organization {
       date_created: date_created ?? this.date_created,
       admin_ids: admin_ids ?? this.admin_ids,
       isVerified: isVerified ?? this.isVerified,
+      isRejected: isRejected ?? this.isRejected, // Include in new object
       location: location ?? this.location,
       address: address ?? this.address,
       about: about ?? this.about,
@@ -183,6 +187,7 @@ class Organization {
       'date_created': date_created.toIso8601String(),
       'admin_ids': admin_ids,
       'isVerified': isVerified,
+      'isRejected': isRejected, // Include in JSON
       'location': location,
       'address': address,
       'about': about,

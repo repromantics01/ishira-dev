@@ -179,6 +179,7 @@ class _SignUpForm2State extends State<SignUpForm2> {
           date_created: DateTime.now(),
           admin_ids: [uid],
           isVerified: false,
+          isRejected: false,
         );
         await _firebaseOrganizationService.addOrganizationWithId(organization, orgId);
 

@@ -53,6 +53,7 @@ class FirebaseOrganizationService {
     try {
       final querySnapshot = await _organizationCollectionRef
           .where('isVerified', isEqualTo: false)
+          .where('isRejected', isEqualTo: false) // Only get non-rejected orgs
           .get();
       return querySnapshot.docs.map((doc) => doc.data()).toList();
     } catch (e) {
@@ -205,6 +206,7 @@ class FirebaseOrganizationService {
         date_created: DateTime.now(),
         admin_ids: ["admin1"],
         isVerified: true,
+        isRejected: false, // Add field
         location: "Manila, Philippines",
         address: "123 Main Street, Manila",
         about: "A shelter dedicated to rescuing and rehoming abandoned pets.",
@@ -231,6 +233,7 @@ class FirebaseOrganizationService {
         date_created: DateTime.now(),
         admin_ids: ["admin2"],
         isVerified: true,
+        isRejected: false, // Add field
         location: "Quezon City, Philippines",
         address: "456 Animal Road, Quezon City",
         about: "Providing care and finding homes for abandoned and surrendered animals.",
@@ -249,6 +252,20 @@ class FirebaseOrganizationService {
           "https://facebook.com/happypaws",
           "https://instagram.com/happypaws"
         ]
+      ),
+      // Add a rejected org for testing
+      Organization(
+        org_id: "mock3",
+        org_name: "Rejected Organization (Mock)",
+        org_proof_of_validation: "invalid_proof",
+        date_created: DateTime.now(),
+        admin_ids: ["admin3"],
+        isVerified: false,
+        isRejected: true,
+        location: "Manila, Philippines",
+        address: "789 Rejected Road, Manila",
+        about: "This organization was rejected for verification.",
+        email: "rejected@example.com",
       ),
     ];
   }
@@ -323,5 +340,72 @@ class FirebaseOrganizationService {
   // void clearCache() {
   //   _orgIdCache.clear();
   // }
+
+  // New method to get rejected organizations
+  Future<List<Organization>> getRejectedOrgs() async {
+    try {
+      final querySnapshot = await _organizationCollectionRef
+          .where('isRejected', isEqualTo: true)
+          .get();
+      return querySnapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      print('Error getting rejected organizations: $e');
+      return [];
+    }
+  }
+  
+  // Helper method to check if an organization is accessible to a specific moderator
+  // This could be extended with permission checks in the future
+  Future<bool> canModerateOrganization(String moderatorId, String organizationId) async {
+    try {
+      // For now, all moderators can access all organizations
+      // In the future, this could check for specific permissions
+      return true;
+    } catch (e) {
+      print('Error checking moderation permissions: $e');
+      return false;
+    }
+  }
+  
+  Future<List<Organization>> getOrganizationsByStatus({
+    bool? isVerified,
+    bool? isRejected,
+  }) async {
+    try {
+      print('Getting organizations with filters - isVerified: $isVerified, isRejected: $isRejected');
+      Query<Organization> query = _organizationCollectionRef;
+      
+      // Apply filters if provided
+      if (isVerified != null) {
+        query = query.where('isVerified', isEqualTo: isVerified);
+      }
+      
+      if (isRejected != null) {
+        query = query.where('isRejected', isEqualTo: isRejected);
+      }
+      
+      final querySnapshot = await query.get();
+      final organizations = querySnapshot.docs.map((doc) => doc.data()).toList();
+      print('Found ${organizations.length} organizations matching filter criteria');
+      
+      // If no organizations found and we're looking for verified ones, return mock data for testing
+      if (organizations.isEmpty && isVerified == true) {
+        print('No verified organizations found - including mock verified orgs for testing');
+        return _getMockOrganizations().where((org) => org.isVerified).toList();
+      }
+      
+      return organizations;
+    } catch (e) {
+      print('Error filtering organizations: $e');
+      
+      // Return mock data on error for development purposes
+      if (isVerified == true) {
+        print('Returning mock verified organizations due to error');
+        return _getMockOrganizations().where((org) => org.isVerified).toList();
+      }
+      
+      return [];
+    }
+  }
 }
 

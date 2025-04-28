@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:pawsmatch/pages/web/moderator/org_dashboard.dart';
+import 'package:pawsmatch/pages/web/moderator/mod_dashboard.dart';
 import 'package:pawsmatch/pages/web/organization/org_dashboard.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/models/account.dart';
@@ -70,17 +70,6 @@ class _WebHomepageState extends State<WebHomepage> {
         return;
       }
 
-      // DEBUG: Check Firebase Auth users
-      // final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
-      // print('Sign-in methods for $email: $methods');
-      // if (methods.isEmpty) {
-      //   setState(() {
-      //     _errorMessage = 'No user found with this email in Firebase Auth.';
-      //     _isAuthenticating = false;
-      //   });
-      //   return;
-      // }
-
       // Firebase Auth sign in
       UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
@@ -101,47 +90,67 @@ class _WebHomepageState extends State<WebHomepage> {
       final account = await _accountService.getAccount(user.uid);
       print('Account loaded: ${account.account_email}, type: ${account.account_type}');
 
-      // Only allow OrgAdmin to proceed to organization dashboard
-      if (account.account_type != AccountType.OrgAdmin) {
-        setState(() {
-          _errorMessage = 'Only organization admin accounts can log in here.';
-          _isAuthenticating = false;
-        });
+      // Handle login based on account type
+      if (account.account_type == AccountType.Moderator) {
+        // Navigate to moderator dashboard if account type is moderator
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ModeratorDashboard(),
+          ),
+        );
         return;
-      }
+      } else if (account.account_type == AccountType.OrgAdmin) {
+        // Get organization info for organization admin
+        final organization = await _organizationService.getOrganizationById(user.uid);
+        print('Organization loaded: ${organization?.org_name}');
 
-      // Get organization info by org_id (should match user.uid)
-      final organization = await _organizationService.getOrganizationById(user.uid);
-      print('Organization loaded: ${organization?.org_name}');
-
-      // If not found, try by admin_ids arrayContains user.uid (for legacy/migration support)
-      Organization? orgToPass = organization;
-      if (orgToPass == null) {
-        final orgSnapshot = await FirebaseFirestore.instance
-            .collection('organization')
-            .where('admin_ids', arrayContains: user.uid)
-            .limit(1)
-            .get();
-        if (orgSnapshot.docs.isNotEmpty) {
-          orgToPass = Organization.fromJson(orgSnapshot.docs.first.data());
+        // If not found, try by admin_ids arrayContains user.uid (for legacy/migration support)
+        Organization? orgToPass = organization;
+        if (orgToPass == null) {
+          final orgSnapshot = await FirebaseFirestore.instance
+              .collection('organization')
+              .where('admin_ids', arrayContains: user.uid)
+              .limit(1)
+              .get();
+          if (orgSnapshot.docs.isNotEmpty) {
+            orgToPass = Organization.fromJson(orgSnapshot.docs.first.data());
+          }
         }
-      }
 
-      if (orgToPass == null) {
+        if (orgToPass == null) {
+          setState(() {
+            _errorMessage = 'No organization profile found for this account.';
+            _isAuthenticating = false;
+          });
+          return;
+        }
+        
+        // Check if organization verification was rejected
+        if (orgToPass.isRejected) {
+          setState(() {
+            _errorMessage = 'Your organization verification has been rejected. Please contact support.';
+            _isAuthenticating = false;
+          });
+          return;
+        }
+
+        // Navigate to organization dashboard
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OrganizationDashboard(org: orgToPass),
+          ),
+        );
+        return;
+      } else {
+        // Other account types not supported for web login
         setState(() {
-          _errorMessage = 'No organization profile found for this account.';
+          _errorMessage = 'Only organization admin or moderator accounts can log in here.';
           _isAuthenticating = false;
         });
         return;
       }
-
-      // Navigate to dashboard, passing the organization object
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OrganizationDashboard(org: orgToPass),
-        ),
-      );
     } on FirebaseAuthException catch (e) {
       print('FirebaseAuthException: ${e.code} ${e.message}');
       String errorMsg = 'Login failed';
