@@ -127,7 +127,7 @@ class _SwipedPetProfileState extends State<SwipedPetProfile> {
               await _organizationService.getOrganizationById(surrender.org_id);
           if (mounted && org != null) {
             setState(() {
-              _organization = org;
+              _organization = org as Organization?;
             });
             return;
           }

@@ -15,6 +15,7 @@ class RequestDetailsModal extends StatefulWidget {
   final Function()? onApprove;
   final Function()? onReject;
   final Function()? onMessage;
+  final Function()? onComplete; // New callback for completing adoptions
 
   const RequestDetailsModal({
     Key? key,
@@ -26,6 +27,7 @@ class RequestDetailsModal extends StatefulWidget {
     this.onApprove,
     this.onReject,
     this.onMessage,
+    this.onComplete, // Add this parameter
   }) : super(key: key);
 
   @override
@@ -728,6 +730,45 @@ class _RequestDetailsModalState extends State<RequestDetailsModal> {
       setState(() {
         _isProcessing = false;
       });
+    }
+  }
+
+  // Helper method to update adoption status
+  Future<void> _updateAdoptionStatus(ApplicationStatus newStatus) async {
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      // Update Firestore document
+      await FirebaseFirestore.instance
+          .collection('adopt')
+          .doc(widget.request.adopt_id)
+          .update({
+        'application_status': newStatus.toString().split('.').last,
+        'date_completed': newStatus == ApplicationStatus.Completed 
+            ? DateTime.now().toIso8601String() 
+            : widget.request.date_completed?.toIso8601String(),
+      });
+
+      // Close the modal
+      widget.onClose!();
+
+    } catch (e) {
+      print('Error updating adoption status: $e');
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update status: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 

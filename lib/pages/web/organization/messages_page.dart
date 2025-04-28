@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:pawsmatch/services/firebase_organization_service.dart';
 import 'org_sidebar.dart';
 import 'package:pawsmatch/models/message.dart';
 import 'package:pawsmatch/services/firebase_messaging_service.dart';
@@ -9,7 +10,16 @@ import 'package:pawsmatch/services/firebase_profile_service.dart';
 import 'package:pawsmatch/widgets/message_thread_view.dart';
 
 class MessagesPage extends StatefulWidget {
-  const MessagesPage({super.key});
+  final String? initialThreadId;
+  final String? recipientId;
+  final String? recipientName;
+
+  const MessagesPage({
+    Key? key, 
+    this.initialThreadId,
+    this.recipientId,
+    this.recipientName,
+  }) : super(key: key);
 
   @override
   State<MessagesPage> createState() => _MessagesPageState();
@@ -19,11 +29,15 @@ class _MessagesPageState extends State<MessagesPage> {
   final FirebaseMessagingService _messagingService = FirebaseMessagingService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _searchController = TextEditingController();
+  final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
   
   String _searchQuery = '';
   List<MessageThread> _threads = [];
   bool _isLoading = true;
   String? _selectedThreadId;
+  bool _showDebugInfo = false;
+  String _debugInfo = '';
+  String? _currentOrgID;
   
   @override
   void initState() {
@@ -33,6 +47,151 @@ class _MessagesPageState extends State<MessagesPage> {
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
+    
+    // Debug: Log the current user ID and properly resolve org ID
+    _initializeOrganizationData();
+    
+    // Load threads with fallback immediately in case stream fails
+    _loadThreadsFallback();
+
+    // If we have a thread ID, open that conversation immediately
+    if (widget.initialThreadId != null) {
+      _openThread(widget.initialThreadId!, widget.recipientId, widget.recipientName);
+    }
+  }
+  
+  // Initialize organization data
+  Future<void> _initializeOrganizationData() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      print('Current org admin ID: ${currentUser.uid}');
+      
+      try {
+        // Properly await the Future to get the actual organization ID
+        _currentOrgID = await _organizationService.getOrganizationIDById(currentUser.uid);
+        print('Current org ID: $_currentOrgID');
+        
+        // If we got an update, refresh the UI
+        if (mounted) {
+          setState(() {});
+        }
+      } catch (e) {
+        print('Error getting organization ID: $e');
+      }
+    } else {
+      print('No current user found');
+    }
+  }
+  
+  Future<void> _loadThreadsFallback() async {
+    try {
+      setState(() {
+        _debugInfo = 'Starting thread fetch for organization...';
+        _isLoading = true;
+      });
+      
+      final threads = await _messagingService.getThreadsForCurrentUserFallback(
+        organizationId: _currentOrgID
+      );
+      
+      if (mounted) {
+        setState(() {
+          _threads = threads;
+          _isLoading = false;
+          _debugInfo += '\nFetched ${threads.length} threads';
+          
+          if (_currentOrgID != null) {
+            _debugInfo += '\nUsed organization ID: $_currentOrgID';
+          } else {
+            _debugInfo += '\nNo organization ID available, used user ID';
+          }
+        });
+      }
+    } catch (e) {
+      print("Error in fallback loading: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _debugInfo += '\nError: $e';
+        });
+      }
+    }
+  }
+  
+  // Create a test conversation for debugging purposes
+  Future<void> _createTestConversation() async {
+    try {
+      setState(() {
+        _debugInfo = 'Creating test conversation...';
+        _isLoading = true;
+      });
+      
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        setState(() {
+          _debugInfo += '\nNo authenticated user.';
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      // Create a thread with a test user
+      final testUserId = 'test_adopter_${DateTime.now().millisecondsSinceEpoch}';
+      final threadId = FirebaseFirestore.instance.collection('message_threads').doc().id;
+      
+      final threadData = {
+        'thread_id': threadId,
+        'participant_ids': [currentUser.uid, testUserId],
+        'participant_names': {
+          currentUser.uid: 'Your Organization',
+          testUserId: 'Test Adopter',
+        },
+        'participant_avatars': {
+          currentUser.uid: null,
+          testUserId: null,
+        },
+        'last_message_time': Timestamp.now(),
+        'last_message_content': "Hi, I'd like to adopt one of your pets!",
+        'last_message_sender_id': testUserId,
+        'unread_by_user': {
+          currentUser.uid: true,
+          testUserId: false,
+        },
+      };
+      
+      await FirebaseFirestore.instance.collection('message_threads').doc(threadId).set(threadData);
+      
+      setState(() {
+        _debugInfo += '\nTest thread created with ID: $threadId';
+      });
+      
+      // Add a test message
+      final messageId = FirebaseFirestore.instance.collection('messages').doc().id;
+      final messageData = {
+        'message_id': messageId,
+        'thread_id': threadId,
+        'sender_id': testUserId,
+        'receiver_id': currentUser.uid,
+        'sender_name': 'Test Adopter',
+        'content': "Hi, I'd like to adopt one of your pets! Is the cute German Shepherd still available?",
+        'timestamp': Timestamp.now(),
+        'is_read': false,
+      };
+      
+      await FirebaseFirestore.instance.collection('messages').doc(messageId).set(messageData);
+      setState(() {
+        _debugInfo += '\nTest message created.';
+      });
+      
+      // Reload threads
+      await _loadThreadsFallback();
+      
+    } catch (e) {
+      setState(() {
+        _debugInfo += '\nError creating test conversation: $e';
+        _isLoading = false;
+      });
+    }
   }
   
   @override
@@ -77,8 +236,12 @@ class _MessagesPageState extends State<MessagesPage> {
     return threads.where((thread) {
       // Get the other participant's name (not the current user)
       final currentUserId = _auth.currentUser?.uid ?? '';
+      
+      // Use the resolved org ID if available, otherwise fall back to the user ID
+      final participantId = _currentOrgID ?? currentUserId;
+      
       final otherParticipants = thread.participantIds
-          .where((id) => id != currentUserId)
+          .where((id) => id != participantId)
           .toList();
       
       if (otherParticipants.isEmpty) return false;
@@ -96,14 +259,25 @@ class _MessagesPageState extends State<MessagesPage> {
     }).toList();
   }
   
+  // Method to open a specific conversation thread
+  void _openThread(String threadId, String? recipientId, String? recipientName) {
+    // Implementation would load messages for this thread
+    print('Opening thread: $threadId with $recipientName (ID: $recipientId)');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFEF5F0),
+      floatingActionButton: _showDebugInfo ? FloatingActionButton(
+        onPressed: _createTestConversation,
+        backgroundColor: Color(0xFFC0D6B6),
+        child: Icon(Icons.add_comment),
+      ) : null,
       body: Center(
         child: Container(
-          width: 1584,
-          height: 1024,
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height,
           child: Stack(
             children: [
               // Sidebar navigation
@@ -113,92 +287,209 @@ class _MessagesPageState extends State<MessagesPage> {
                 child: OrgSidebar(),
               ),
               
-              // Messages interface container - positioned in the center
+              // Debug button in corner
               Positioned(
-                left: 400, // Adjusted for better layout with sidebar
+                right: 20,
+                top: 20,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _showDebugInfo = !_showDebugInfo;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _showDebugInfo ? Color(0xFFC0D6B6) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.bug_report, 
+                      color: _showDebugInfo ? Colors.white : Colors.grey.shade400,
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Debug info panel
+              if (_showDebugInfo)
+                Positioned(
+                  right: 20,
+                  top: 60,
+                  width: 300,
+                  height: 200,
+                  child: Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 5,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Debug Info', 
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.refresh, size: 16),
+                              onPressed: _loadThreadsFallback,
+                              padding: EdgeInsets.zero,
+                              constraints: BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Text(_debugInfo),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              
+              // Messages interface container - responsive positioning
+              Positioned(
+                left: 400,
                 top: 56,
+                right: 20,
+                bottom: 20,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Threads sidebar 
+                    // Threads sidebar with fixed width
                     Container(
-                      width: 397,
-                      height: 912,
-                      child: Stack(
+                      width: 380,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
                         children: [
-                          // Background container
+                          // Header section
                           Container(
-                            width: 397,
-                            height: 912,
-                            decoration: ShapeDecoration(
-                              color: Colors.white.withOpacity(0.85),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
-                          ),
-                          
-                          // Messages title
-                          Positioned(
-                            left: 27,
-                            top: 39,
-                            child: SizedBox(
-                              width: 356,
-                              height: 40,
-                              child: Text(
-                                'Messages',
-                                style: TextStyle(
-                                  color: const Color(0xFF545454),
-                                  fontSize: 36,
-                                  fontFamily: 'DM Sans',
-                                  fontWeight: FontWeight.w700,
+                            padding: EdgeInsets.fromLTRB(24, 28, 24, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Title with badge
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Messages',
+                                      style: TextStyle(
+                                        color: const Color(0xFF545454),
+                                        fontSize: 32,
+                                        fontFamily: 'DM Sans',
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFC0D6B6),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: StreamBuilder<List<MessageThread>>(
+                                        stream: _messagingService.getThreadsForCurrentUser(
+                                          organizationId: _currentOrgID
+                                        ),
+                                        builder: (context, snapshot) {
+                                          final threadCount = snapshot.hasData ? 
+                                              snapshot.data!.length : _threads.length;
+                                          return Text(
+                                            '$threadCount',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontFamily: 'DM Sans',
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          );
+                                        }
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ),
-                          
-                          // Search bar
-                          Positioned(
-                            left: 20,
-                            top: 99,
-                            child: Container(
-                              width: 356,
-                              height: 36,
-                              child: TextField(
-                                controller: _searchController,
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: const Color(0xFFEDEDED),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 22),
-                                  hintText: 'Search',
-                                  hintStyle: TextStyle(
-                                    color: Colors.black.withOpacity(0.5),
+                                SizedBox(height: 8),
+                                
+                                // Subtitle with generic description
+                                Text(
+                                  'Conversations with users about your pets',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
                                     fontSize: 14,
-                                    fontFamily: 'Inter',
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                  prefixIcon: Icon(
-                                    Icons.search,
-                                    color: Colors.black.withOpacity(0.5),
-                                    size: 18,
+                                    fontFamily: 'DM Sans',
                                   ),
                                 ),
-                              ),
+                                
+                                SizedBox(height: 20),
+                                
+                                // Search bar with generic hint
+                                Container(
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF5F5F5),
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFFF5F5F5),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                      contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 22),
+                                      hintText: 'Search conversations',
+                                      hintStyle: TextStyle(
+                                        color: Colors.black.withOpacity(0.5),
+                                        fontSize: 16,
+                                        fontFamily: 'DM Sans',
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search,
+                                        color: Colors.black.withOpacity(0.5),
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
+                          
+                          // Divider
+                          Container(
+                            height: 1,
+                            color: Colors.grey.shade200,
                           ),
                           
                           // Threads list with improved error handling
-                          Positioned(
-                            left: 0,
-                            top: 150,
-                            bottom: 0,
-                            right: 0,
+                          Expanded(
                             child: StreamBuilder<List<MessageThread>>(
-                              stream: _messagingService.getThreadsForCurrentUser(),
+                              stream: _messagingService.getThreadsForCurrentUser(
+                                organizationId: _currentOrgID
+                              ),
                               builder: (context, snapshot) {
                                 // Handle loading state
                                 if (snapshot.connectionState == ConnectionState.waiting && _isLoading) {
@@ -223,90 +514,25 @@ class _MessagesPageState extends State<MessagesPage> {
                                   );
                                 }
                                 
-                                // Handle error state with fallback
-                                if (snapshot.hasError) {
-                                  print("Error loading message threads: ${snapshot.error}");
-                                  return FutureBuilder<List<MessageThread>>(
-                                    future: _messagingService.getThreadsForCurrentUserFallback(),
-                                    builder: (context, fallbackSnapshot) {
-                                      if (fallbackSnapshot.connectionState == ConnectionState.waiting) {
-                                        return Center(child: CircularProgressIndicator());
-                                      }
-                                      
-                                      if (fallbackSnapshot.hasError || !fallbackSnapshot.hasData || fallbackSnapshot.data!.isEmpty) {
-                                        return Center(
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
-                                              SizedBox(height: 16),
-                                              Text(
-                                                'Error loading messages',
-                                                style: TextStyle(
-                                                  color: Colors.red.shade700,
-                                                  fontSize: 18,
-                                                  fontFamily: 'DM Sans',
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              SizedBox(height: 8),
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 20),
-                                                child: Text(
-                                                  snapshot.error.toString(),
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: Colors.red.shade400,
-                                                    fontSize: 14,
-                                                    fontFamily: 'DM Sans',
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(height: 24),
-                                              ElevatedButton(
-                                                onPressed: () {
-                                                  setState(() {
-                                                    _isLoading = true;
-                                                  });
-                                                },
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Color(0xFFC0D6B6),
-                                                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                ),
-                                                child: Text('Retry'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }
-                                      
-                                      // Fallback succeeded
-                                      _isLoading = false;
-                                      _threads = fallbackSnapshot.data!;
-                                      final filteredThreads = _getFilteredThreads(_threads);
-                                      
-                                      if (filteredThreads.isEmpty) {
-                                        return _buildEmptyThreadsList();
-                                      }
-                                      
-                                      return _buildThreadsList(filteredThreads);
-                                    },
-                                  );
+                                // Use stream data if available, otherwise use fallback data
+                                final List<MessageThread> threadsToDisplay;
+                                if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                                  threadsToDisplay = snapshot.data!;
+                                  _threads = threadsToDisplay; // Update stored threads
+                                } else {
+                                  // If stream fails, use our cached threads
+                                  threadsToDisplay = _threads;
+                                  
+                                  // If both are empty, show empty state
+                                  if (threadsToDisplay.isEmpty) {
+                                    return _buildEmptyThreadsList();
+                                  }
                                 }
                                 
-                                _isLoading = false;
-                                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                                  return _buildEmptyThreadsList();
-                                }
-                                
-                                // Update threads list
-                                _threads = snapshot.data!;
-                                
-                                // Filter threads based on search
-                                final filteredThreads = _getFilteredThreads(_threads);
-                                
+                                // Apply search filter
+                                final filteredThreads = _getFilteredThreads(threadsToDisplay);
                                 if (filteredThreads.isEmpty) {
-                                  return _buildEmptyThreadsList();
+                                  return _buildEmptySearchResults();
                                 }
                                 
                                 return _buildThreadsList(filteredThreads);
@@ -317,65 +543,30 @@ class _MessagesPageState extends State<MessagesPage> {
                       ),
                     ),
                     
-                    // Chat view container - show when a thread is selected
-                    if (_selectedThreadId != null)
-                      Container(
-                        width: 750,
-                        height: 912,
-                        margin: EdgeInsets.only(left: 20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: MessageThreadView(
-                          threadId: _selectedThreadId!,
-                          messagingService: _messagingService,
-                        ),
-                      ),
+                    SizedBox(width: 20),
                     
-                    // Empty state when no thread is selected
-                    if (_selectedThreadId == null)
-                      Container(
-                        width: 750,
-                        height: 912,
-                        margin: EdgeInsets.only(left: 20),
+                    // Chat view container - expanded to fill available space
+                    Expanded(
+                      child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
                         ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.chat_outlined,
-                                size: 80,
-                                color: Colors.grey.shade400,
-                              ),
-                              SizedBox(height: 20),
-                              Text(
-                                'Select a conversation',
-                                style: TextStyle(
-                                  color: const Color(0xFF545454),
-                                  fontSize: 24,
-                                  fontFamily: 'DM Sans',
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              Text(
-                                'Choose a conversation from the list to view messages',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: const Color(0xFF545454),
-                                  fontSize: 16,
-                                  fontFamily: 'DM Sans',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        child: _selectedThreadId != null
+                            ? MessageThreadView(
+                                threadId: _selectedThreadId!,
+                                messagingService: _messagingService,
+                              )
+                            : _buildEmptyConversationView(),
                       ),
+                    ),
                   ],
                 ),
               ),
@@ -393,16 +584,74 @@ class _MessagesPageState extends State<MessagesPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Color(0xFFE9F1E5),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.forum_outlined,
+                size: 40,
+                color: Color(0xFFC0D6B6),
+              ),
+            ),
+            SizedBox(height: 24),
+            Text(
+              'No Messages Yet',
+              style: TextStyle(
+                color: const Color(0xFF545454),
+                fontSize: 20,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'When users message you, their conversations will appear here',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 16,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+            ),
+            if (_showDebugInfo)
+              Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: ElevatedButton(
+                  onPressed: _createTestConversation,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFD1E7CC),
+                  ),
+                  child: Text('Create Test Conversation'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildEmptySearchResults() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
             Icon(
-              Icons.forum_outlined,
+              Icons.search_off_rounded,
               size: 64,
               color: Colors.grey.shade400,
             ),
             SizedBox(height: 24),
             Text(
-              _searchQuery.isEmpty 
-                  ? 'No conversations yet'
-                  : 'No matching conversations',
+              'No matching conversations',
               style: TextStyle(
                 color: const Color(0xFF545454),
                 fontSize: 20,
@@ -412,14 +661,25 @@ class _MessagesPageState extends State<MessagesPage> {
             ),
             SizedBox(height: 12),
             Text(
-              _searchQuery.isEmpty 
-                  ? 'Messages from pet adopters will appear here'
-                  : 'Try a different search term',
+              'Try a different search term',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.grey.shade600,
                 fontSize: 16,
                 fontFamily: 'DM Sans',
+              ),
+            ),
+            SizedBox(height: 24),
+            TextButton(
+              onPressed: () {
+                _searchController.clear();
+              },
+              child: Text(
+                'Clear search',
+                style: TextStyle(
+                  color: Color(0xFFC0D6B6),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -430,20 +690,31 @@ class _MessagesPageState extends State<MessagesPage> {
 
   Widget _buildThreadsList(List<MessageThread> filteredThreads) {
     return ListView.builder(
-      padding: EdgeInsets.only(top: 10),
+      padding: EdgeInsets.symmetric(vertical: 8),
       itemCount: filteredThreads.length,
       itemBuilder: (context, index) {
         final thread = filteredThreads[index];
         
-        // Get other participant info (not the org)
+        // Get the other participant (not the organization)
         final currentUserId = _auth.currentUser?.uid ?? '';
+        
+        // Use the resolved org ID if available, otherwise fall back to the user ID
+        final orgId = _currentOrgID ?? currentUserId;
+        
         final otherParticipantId = thread.participantIds
-            .firstWhere((id) => id != currentUserId, orElse: () => '');
+            .firstWhere((id) => id != orgId, orElse: () => '');
         
         final otherParticipantName = thread.participantNames[otherParticipantId] ?? 'Unknown User';
+        final otherParticipantAvatar = thread.participantAvatars[otherParticipantId];
         
-        // Check if thread has unread messages for current user
+        // Check if thread has unread messages for the organization
         final hasUnread = thread.unreadByUser[currentUserId] == true;
+        
+        // Check if this thread is selected
+        final isSelected = _selectedThreadId == thread.threadId;
+        
+        // Determine who sent the last message
+        final isLastMessageFromOtherParticipant = thread.lastMessageSenderId == otherParticipantId;
         
         return GestureDetector(
           onTap: () {
@@ -454,144 +725,179 @@ class _MessagesPageState extends State<MessagesPage> {
             });
           },
           child: Container(
-            width: 340,
-            height: 61,
-            margin: EdgeInsets.symmetric(horizontal: 22, vertical: 5),
+            margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: _selectedThreadId == thread.threadId ? 
-                  const Color(0xFFF5F5F5) : Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              color: isSelected ? 
+                  Color(0xFFE9F1E5) : hasUnread ? Color(0xFFF5F9F2) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? Color(0xFFC0D6B6) : Colors.transparent,
+                width: 1.5,
+              ),
             ),
-            child: Stack(
-              children: [
-                // Bottom divider
-                Positioned(
-                  left: 5,
-                  top: 60,
-                  child: Container(
-                    width: 330,
-                    height: 1,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD9D9D9),
-                    ),
-                  ),
-                ),
-                
-                // Message preview text
-                Positioned(
-                  left: 69,
-                  top: 30,
-                  child: SizedBox(
-                    width: 252,
-                    height: 22,
-                    child: Text(
-                      _getMessagePreview(thread.lastMessageContent),
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: const Color(0xFF545454),
-                        fontSize: 10,
-                        fontStyle: FontStyle.italic,
-                        fontFamily: 'DM Sans',
-                        fontWeight: hasUnread ? 
-                            FontWeight.w700 : FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Time indicator
-                Positioned(
-                  right: 20,
-                  top: 9,
-                  child: SizedBox(
-                    height: 22,
-                    child: Text(
-                      _formatTimestamp(thread.lastMessageTime),
-                      style: TextStyle(
-                        color: const Color(0xFF545454),
-                        fontSize: 10,
-                        fontFamily: 'DM Sans',
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // User name
-                Positioned(
-                  left: 69,
-                  top: 12,
-                  child: SizedBox(
-                    width: 180,
-                    height: 19,
-                    child: Text(
-                      otherParticipantName,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: const Color(0xFF545454),
-                        fontSize: 15,
-                        fontFamily: 'DM Sans',
-                        fontWeight: hasUnread ? 
-                            FontWeight.w700 : FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // User avatar
-                Positioned(
-                  left: 17,
-                  top: 8,
-                  child: Container(
-                    width: 40.21,
-                    height: 40.21,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFFF5F5F5),
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          width: 1,
-                          color: Colors.black.withOpacity(0.29),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  // Avatar with notification badge
+                  Stack(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFFF5F5F5),
+                          border: Border.all(
+                            color: isSelected ? Color(0xFFC0D6B6) : Colors.grey.shade200,
+                            width: 2,
+                          ),
+                          image: otherParticipantAvatar != null ?
+                            DecorationImage(
+                              image: NetworkImage(otherParticipantAvatar),
+                              fit: BoxFit.cover,
+                            ) :
+                            DecorationImage(
+                              image: NetworkImage('https://placehold.co/50x50/E4E4E4/545454?text=${otherParticipantName.isNotEmpty ? otherParticipantName[0].toUpperCase() : "?"}'),
+                              fit: BoxFit.cover,
+                            ),
                         ),
-                        borderRadius: BorderRadius.circular(73),
                       ),
-                      image: thread.participantNames[otherParticipantId] != null ?
-                        DecorationImage(
-                          image: NetworkImage('https://placehold.co/40x40/E4E4E4/545454?text=${otherParticipantName[0]}'),
-                          fit: BoxFit.cover,
-                        ) : null,
-                    ),
-                    child: thread.participantNames[otherParticipantId] == null ?
-                      Center(
-                        child: Text(
-                          '?',
-                          style: TextStyle(
-                            color: const Color(0xFF545454),
-                            fontSize: 16,
+                      if (hasUnread)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: Color(0xFFC0D6B6),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
                           ),
                         ),
-                      ) : null,
+                    ],
                   ),
-                ),
-                
-                // Unread indicator
-                if (hasUnread)
-                  Positioned(
-                    right: 10,
-                    top: 28,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.blue,
-                      ),
+                  SizedBox(width: 12),
+                  
+                  // Message content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            // Name
+                            Expanded(
+                              child: Text(
+                                otherParticipantName,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: const Color(0xFF545454),
+                                  fontSize: 16,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            
+                            // Time
+                            Text(
+                              _formatTimestamp(thread.lastMessageTime),
+                              style: TextStyle(
+                                color: hasUnread ? Color(0xFF545454) : Colors.grey.shade500,
+                                fontSize: 12,
+                                fontFamily: 'DM Sans',
+                                fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 4),
+                        
+                        // Message preview with sender indicator
+                        Row(
+                          children: [
+                            if (!isLastMessageFromOtherParticipant)
+                              Text(
+                                'You: ',
+                                style: TextStyle(
+                                  color: Colors.grey.shade800,
+                                  fontSize: 13,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            Expanded(
+                              child: Text(
+                                _getMessagePreview(thread.lastMessageContent),
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: hasUnread ? Color(0xFF545454) : Colors.grey.shade600,
+                                  fontSize: 13,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+  
+  Widget _buildEmptyConversationView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Color(0xFFE9F1E5),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.chat_outlined,
+              size: 60,
+              color: Color(0xFFC0D6B6),
+            ),
+          ),
+          SizedBox(height: 24),
+          Text(
+            'Select a Conversation',
+            style: TextStyle(
+              color: const Color(0xFF545454),
+              fontSize: 24,
+              fontFamily: 'DM Sans',
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 60),
+            child: Text(
+              'Select a conversation from the list to respond to messages',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFF545454),
+                fontSize: 16,
+                fontFamily: 'DM Sans',
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

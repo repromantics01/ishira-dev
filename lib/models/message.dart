@@ -8,8 +8,8 @@ class Message {
   final String senderName;
   final String content;
   final DateTime timestamp;
-  final bool isRead;
-  final String? senderAvatarUrl;
+  bool isRead;
+  String? senderAvatarUrl;
 
   Message({
     required this.messageId,
@@ -60,6 +60,11 @@ class MessageThread {
   final String lastMessageContent;
   final String lastMessageSenderId;
   final Map<String, bool> unreadByUser;
+  
+  // New fields for enhanced participant info
+  final Map<String, String?> participantAvatars;
+  final Map<String, bool> participantIsOrg;
+  final Map<String, bool> participantIsVerified;
 
   MessageThread({
     required this.threadId,
@@ -69,9 +74,42 @@ class MessageThread {
     required this.lastMessageContent,
     required this.lastMessageSenderId,
     required this.unreadByUser,
-  });
+    Map<String, String?>? participantAvatars,
+    Map<String, bool>? participantIsOrg,
+    Map<String, bool>? participantIsVerified,
+  }) : 
+    participantAvatars = participantAvatars ?? {},
+    participantIsOrg = participantIsOrg ?? {},
+    participantIsVerified = participantIsVerified ?? {};
 
   factory MessageThread.fromJson(Map<String, dynamic> json) {
+    // Parse participant avatars if available
+    Map<String, String?> participantAvatars = {};
+    if (json['participant_avatars'] != null) {
+      final avatars = json['participant_avatars'] as Map<String, dynamic>;
+      avatars.forEach((key, value) {
+        participantAvatars[key] = value as String?;
+      });
+    }
+    
+    // Parse participant organization status
+    Map<String, bool> participantIsOrg = {};
+    if (json['participant_is_org'] != null) {
+      final orgs = json['participant_is_org'] as Map<String, dynamic>;
+      orgs.forEach((key, value) {
+        participantIsOrg[key] = value as bool? ?? false;
+      });
+    }
+    
+    // Parse participant verified status
+    Map<String, bool> participantIsVerified = {};
+    if (json['participant_is_verified'] != null) {
+      final verified = json['participant_is_verified'] as Map<String, dynamic>;
+      verified.forEach((key, value) {
+        participantIsVerified[key] = value as bool? ?? false;
+      });
+    }
+    
     return MessageThread(
       threadId: json['thread_id'] as String,
       participantIds: List<String>.from(json['participant_ids']),
@@ -80,6 +118,9 @@ class MessageThread {
       lastMessageContent: json['last_message_content'] as String,
       lastMessageSenderId: json['last_message_sender_id'] as String,
       unreadByUser: Map<String, bool>.from(json['unread_by_user']),
+      participantAvatars: participantAvatars,
+      participantIsOrg: participantIsOrg,
+      participantIsVerified: participantIsVerified,
     );
   }
 
@@ -92,6 +133,19 @@ class MessageThread {
       'last_message_content': lastMessageContent,
       'last_message_sender_id': lastMessageSenderId,
       'unread_by_user': unreadByUser,
+      'participant_avatars': participantAvatars,
+      'participant_is_org': participantIsOrg,
+      'participant_is_verified': participantIsVerified,
     };
+  }
+  
+  // Helper method to get the other participant (not the current user)
+  String? getOtherParticipantId(String currentUserId) {
+    try {
+      return participantIds
+          .firstWhere((id) => id != currentUserId, orElse: () => '');
+    } catch (e) {
+      return null;
+    }
   }
 }

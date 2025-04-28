@@ -34,6 +34,26 @@ class FirebaseProfileService {
   Future<DocumentSnapshot<Profile>> getProfileWithId(String id) {
     return _profileCollectionRef.doc(id).get();
   }
+
+  Future<String> getProfileID(String accountId) async {
+    try {
+      final profileQuery = await _firestore
+          .collection(PROFILE_COLLECTION_REF)
+          .where('account_id', isEqualTo: accountId)
+          .limit(1)
+          .get();
+      
+      if (profileQuery.docs.isNotEmpty) {
+        return profileQuery.docs.first.id;
+      } else {
+        print('No profile found for account ID: $accountId');
+        return 'No profile found';
+      }
+    } catch (e) {
+      print('Error getting profile ID: $e');
+      return 'Error retrieving profile ID';
+    }
+  }
   
   // Updated method to get user dashboard information with better error handling
   Future<Map<String, String>> getUserDashboardInfo() async {
@@ -142,6 +162,35 @@ class FirebaseProfileService {
     } catch (e) {
       print('Error updating profile: $e');
       throw e;
+    }
+  }
+
+  // Public method to get user type with improved field checking
+  Future<String> getUserType(String profileId) async {
+    try {
+      // Get the profile document
+      final profileDoc = await _firestore.collection('profile').doc(profileId).get();
+      
+      if (profileDoc.exists) {
+        final data = profileDoc.data() as Map<String, dynamic>;
+        
+        // Check various field names that might contain user type
+        String? userType = data['user_type'] as String?;
+
+   
+        // If we found a user type, return it
+        if (userType != null && userType.isNotEmpty) {
+          return userType;
+        }
+      } else {
+        print('Profile document not found for ID: $profileId');
+      }
+      
+      // Default return value
+      return 'user';
+    } catch (e) {
+      print('Error determining user type: $e');
+      return 'user';
     }
   }
 }

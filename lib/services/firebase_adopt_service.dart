@@ -1,13 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/surrender.dart';
-import 'package:pawsmatch/models/account.dart';
-import 'package:pawsmatch/models/pet.dart';
-import 'package:pawsmatch/models/organization.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
-import 'package:pawsmatch/services/firebase_pet_service.dart';
-import 'package:pawsmatch/services/firebase_organization_service.dart';
-import 'package:pawsmatch/models/adopt.dart';
 import 'package:pawsmatch/models/adopt.dart';
 
 const String ADOPTION_COLLECTION_REF = "adopt";

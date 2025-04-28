@@ -4,7 +4,6 @@ import 'surrender_requests_page.dart';
 import 'adoption_requests_page.dart';
 import 'messages_page.dart';
 import 'organization_profile_page.dart';
-import 'settings_page.dart';
 import 'org_dashboard.dart'; 
 
 class OrgSidebar extends StatelessWidget {
@@ -161,12 +160,6 @@ class OrgSidebar extends StatelessWidget {
             onTap: () => _navigateIfNotCurrent(context, const OrganizationProfilePage()),
           ),
           // Settings
-          _SidebarMenuItem(
-            top: 683,
-            icon: Icon(Icons.settings, color: Color(0xFF725F63), size: 28),
-            label: 'Settings',
-            onTap: () => _navigateIfNotCurrent(context, const SettingsPage()),
-          ),
           // Logout
           Positioned(
             left: 215,
