@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pawsmatch/models/pet.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
-import 'package:pawsmatch/services/firebase_photo_service.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:pawsmatch/utils/image_utils.dart';
 
 class EditPetModal extends StatefulWidget {
   final Pet pet;
@@ -26,12 +22,8 @@ class EditPetModal extends StatefulWidget {
 class _EditPetModalState extends State<EditPetModal> {
   final _formKey = GlobalKey<FormState>();
   final FirebasePetService _petService = FirebasePetService();
-  final FirebasePhotoService _photoService = FirebasePhotoService();
-  final ImagePicker _imagePicker = ImagePicker();
   bool _isLoading = false;
-  bool _isLoadingPhotos = true; // Add this flag
   bool _hasChanges = false;
-  bool _isUploadingPhotos = false;
   String? _errorMessage;
 
   // Form controllers
@@ -45,12 +37,6 @@ class _EditPetModalState extends State<EditPetModal> {
   late String _selectedSpecies;
   late bool _isNeuteredOrSpayed;
   late VaccinationStatus _vaccinationStatus;
-  List<String> _photoIds = [];
-  List<XFile> _newPhotos = [];
-  List<String> _photosToDelete = [];
-  
-  // Add map to store photo URLs
-  Map<String, String> _photoUrlsMap = {};
 
   // Options for dropdowns
   final List<String> _genderOptions = ['Male', 'Female'];
@@ -71,10 +57,6 @@ class _EditPetModalState extends State<EditPetModal> {
     _selectedSpecies = widget.pet.species;
     _isNeuteredOrSpayed = widget.pet.is_neutered_or_spayed;
     _vaccinationStatus = widget.pet.vaccination_status;
-    _photoIds = List.from(widget.pet.photo_id); // Create a copy to avoid modifying the original
-
-    // Load photo URLs
-    _loadPhotoUrls();
 
     // Add listeners to detect changes
     _nameController.addListener(_onFormChanged);
@@ -107,40 +89,7 @@ class _EditPetModalState extends State<EditPetModal> {
       });
 
       try {
-        // Process photos to delete
-        if (_photosToDelete.isNotEmpty) {
-          print('Deleting ${_photosToDelete.length} photos: $_photosToDelete');
-          for (final photoId in _photosToDelete) {
-            await _photoService.deletePhoto(photoId);
-          }
-        }
-        
-        // Create a new array for photo IDs that will contain existing + new photos
-        List<String> updatedPhotoIds = List.from(_photoIds); // Start with current photos
-        
-        // Upload new photos and add their IDs to the pet's photo_id array
-        if (_newPhotos.isNotEmpty) {
-          setState(() {
-            _isUploadingPhotos = true;
-          });
-          
-          print('Uploading ${_newPhotos.length} new photos');
-          // Upload the new photos and get their IDs
-          final uploadedPhotoIds = await _photoService.uploadImages(_newPhotos);
-          
-          // Add the new photo IDs to our updated list
-          if (uploadedPhotoIds.isNotEmpty) {
-            updatedPhotoIds.addAll(uploadedPhotoIds);
-            print('Added ${uploadedPhotoIds.length} new photo IDs: $uploadedPhotoIds');
-            print('Updated photo ID array now contains ${updatedPhotoIds.length} photos');
-          }
-          
-          setState(() {
-            _isUploadingPhotos = false;
-          });
-        }
-
-        // Create updated pet object with the combined photo IDs
+        // Create updated pet object
         final updatedPet = widget.pet.copyWith(
           pet_name: _nameController.text,
           gender: _selectedGender,
@@ -152,13 +101,11 @@ class _EditPetModalState extends State<EditPetModal> {
           species: _selectedSpecies,
           is_neutered_or_spayed: _isNeuteredOrSpayed,
           vaccination_status: _vaccinationStatus,
-          photo_id: updatedPhotoIds, // Update with combined photo IDs
         );
 
         // Update the pet in Firestore
         final success = await _petService.updatePet(updatedPet);
         if (success) {
-          print('Successfully updated pet ${updatedPet.pet_name} with ${updatedPhotoIds.length} photos');
           if (mounted) {
             // Close modal and notify parent of success
             Navigator.of(context).pop();
@@ -174,7 +121,6 @@ class _EditPetModalState extends State<EditPetModal> {
         setState(() {
           _errorMessage = 'Error: $e';
           _isLoading = false;
-          _isUploadingPhotos = false;
         });
       }
     }
@@ -205,388 +151,6 @@ class _EditPetModalState extends State<EditPetModal> {
         _hasChanges = true;
       });
     }
-  }
-
-  Future<void> _pickImages() async {
-    try {
-      final List<XFile> images = await _imagePicker.pickMultiImage();
-      if (images.isNotEmpty) {
-        setState(() {
-          _newPhotos.addAll(images);
-          _hasChanges = true;
-        });
-      }
-    } catch (e) {
-      print('Error picking images: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pick images: $e')),
-      );
-    }
-  }
-
-  // Camera option for taking a new photo
-  Future<void> _takePhoto() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(source: ImageSource.camera);
-      if (image != null) {
-        setState(() {
-          _newPhotos.add(image);
-          _hasChanges = true;
-        });
-      }
-    } catch (e) {
-      print('Error taking photo: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to take photo: $e')),
-      );
-    }
-  }
-
-  void _showImageSourceOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return SafeArea(
-          child: Wrap(
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Photo Gallery'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _pickImages();
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.camera_alt),
-                title: Text('Camera'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _takePhoto();
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Add method to load photo URLs
-  Future<void> _loadPhotoUrls() async {
-    setState(() {
-      _isLoadingPhotos = true;
-    });
-
-    try {
-      // Load URLs for all photos in parallel
-      for (String photoId in _photoIds) {
-        final url = await _photoService.getPhotoUrl(photoId);
-        if (url != null) {
-          setState(() {
-            _photoUrlsMap[photoId] = url;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error loading photo URLs: $e');
-    } finally {
-      setState(() {
-        _isLoadingPhotos = false;
-      });
-    }
-  }
-
-  // Add this new method to reorder photos (useful for setting a main photo)
-  void _reorderPhotos(int oldIndex, int newIndex) {
-    setState(() {
-      if (oldIndex < _photoIds.length) {
-        // Reordering existing photos
-        final item = _photoIds.removeAt(oldIndex);
-        _photoIds.insert(newIndex < _photoIds.length ? newIndex : _photoIds.length, item);
-        _hasChanges = true;
-      }
-    });
-  }
-
-  // Make photo gallery reorderable
-  Widget _buildPhotoGallery() {
-    return Container(
-      height: 180,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: _isLoadingPhotos
-        ? Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Existing photos with reorder capability
-                ..._photoIds.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final photoId = entry.value;
-                  final photoUrl = _photoUrlsMap[photoId];
-                  
-                  return Stack(
-                    children: [
-                      Draggable<int>(
-                        // Allow photos to be draggable for reordering
-                        data: index,
-                        feedback: Container(
-                          width: 150,
-                          height: 150,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: photoUrl != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  photoUrl,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Container(
-                                color: Colors.grey.shade200,
-                                child: Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
-                              ),
-                        ),
-                        childWhenDragging: Opacity(
-                          opacity: 0.3,
-                          child: Container(
-                            margin: EdgeInsets.only(right: 12),
-                            width: 150,
-                            height: 150,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey.shade300),
-                            ),
-                          ),
-                        ),
-                        child: DragTarget<int>(
-                          onAccept: (sourceIndex) {
-                            _reorderPhotos(sourceIndex, index);
-                          },
-                          builder: (context, candidateData, rejectedData) {
-                            return Container(
-                              margin: EdgeInsets.only(right: 12),
-                              width: 150,
-                              height: 150,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                border: candidateData.isNotEmpty
-                                  ? Border.all(color: Colors.blue, width: 2)
-                                  : null,
-                              ),
-                              child: photoUrl != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Stack(
-                                      children: [
-                                        Image.network(
-                                          photoUrl,
-                                          fit: BoxFit.cover,
-                                          width: 150,
-                                          height: 150,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return Container(
-                                              color: Colors.grey.shade200,
-                                              child: Center(
-                                                child: Column(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  children: [
-                                                    Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                                                    SizedBox(height: 8),
-                                                    Text(
-                                                      'Failed to load',
-                                                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        // Show main photo indicator if this is the first photo
-                                        if (index == 0)
-                                          Positioned(
-                                            top: 8,
-                                            left: 8,
-                                            child: Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green.withOpacity(0.8),
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                'Main',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  )
-                                : Container(
-                                    color: Colors.grey.shade200,
-                                    child: Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
-                                  ),
-                            );
-                          },
-                        ),
-                      ),
-                      
-                      // Delete button
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              _photosToDelete.add(photoId);
-                              _photoIds.removeAt(index);
-                              _photoUrlsMap.remove(photoId);
-                              _hasChanges = true;
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade300,
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            child: Icon(Icons.delete, size: 20, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-                
-                // New photos to upload - using our cross-platform utility
-                ..._newPhotos.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final photo = entry.value;
-                  return Stack(
-                    children: [
-                      Container(
-                        margin: EdgeInsets.only(right: 12),
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: ImageUtils.buildImageFromXFile(
-                            photo,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Colors.grey.shade200,
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        'Invalid image',
-                                        style: TextStyle(color: Colors.grey, fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      // Delete button
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              _newPhotos.removeAt(index);
-                              _hasChanges = true;
-                            });
-                          },
-                          child: Container(
-                            padding: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade300,
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            child: Icon(Icons.delete, size: 20, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-                
-                // Add photo button
-                InkWell(
-                  onTap: _showImageSourceOptions,
-                  child: Container(
-                    width: 150,
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.grey.shade300,
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.add_photo_alternate,
-                          size: 40,
-                          color: Color(0xFF725F63),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Add Photos',
-                          style: TextStyle(
-                            color: Color(0xFF725F63),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Tap to select',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-    );
   }
 
   @override
@@ -1058,55 +622,6 @@ class _EditPetModalState extends State<EditPetModal> {
                       },
                     ),
                     SizedBox(height: 32),
-                    
-                    // Photo management section - Enhanced UI
-                    Text(
-                      'Pet Photos',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 18,
-                        fontFamily: 'Century Gothic',
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Add or remove photos of your pet. The first photo will be the main image shown in listings.',
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 14,
-                        fontFamily: 'DM Sans',
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    
-                    // Photo gallery - Updated to handle loading state and errors
-                    _buildPhotoGallery(),
-                    // Upload progress indicator
-                    if (_isUploadingPhotos)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Uploading photos...',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    SizedBox(height: 24),
                     
                     // Save button
                     Row(
