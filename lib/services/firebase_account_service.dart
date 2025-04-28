@@ -54,57 +54,119 @@ class DatabaseAccountService {
   // New method to get the current user's account username
   Future<String> getCurrentUsername() async {
     try {
-      User? currentUser = _auth.currentUser;
-      if (currentUser != null) {
-        final account = await getAccount(currentUser.uid);
-        return account.account_username;
-      } else {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+      
+      final docSnapshot = await _firestore
+          .collection(ACCOUNT_COLLECTION_REF)
+          .doc(userId)
+          .get();
+          
+      if (!docSnapshot.exists) {
         return 'User';
       }
+      
+      return docSnapshot.data()?['account_username'] ?? 'User';
     } catch (e) {
       print('Error getting username: $e');
       return 'User';
     }
   }
-
-  // New method to get the current user's account email
+  
+  // Get current email - easier from Auth than Firestore
   Future<String> getCurrentEmail() async {
+    return _auth.currentUser?.email ?? '';
+  }
+  
+  // Update username in Firestore
+  Future<void> updateUsername(String newUsername) async {
     try {
-      User? currentUser = _auth.currentUser;
-      if (currentUser != null) {
-        final account = await getAccount(currentUser.uid);
-        return account.account_email;
-      } else {
-        return 'No email available';
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('User not logged in');
       }
+      
+      await _firestore
+          .collection(ACCOUNT_COLLECTION_REF)
+          .doc(userId)
+          .update({'account_username': newUsername});
     } catch (e) {
-      print('Error getting email: $e');
-      return 'No email available';
+      print('Error updating username: $e');
+      throw Exception('Failed to update username: $e');
     }
   }
-
-  // New method to get both username and email together
-  Future<Map<String, String>> getUserInfo() async {
+  
+  
+  
+  // Update email (requires re-authentication)
+  Future<void> updateEmail(String newEmail, String currentPassword) async {
     try {
-      User? currentUser = _auth.currentUser;
-      if (currentUser != null) {
-        final account = await getAccount(currentUser.uid);
-        return {
-          'username': account.account_username,
-          'email': account.account_email
-        };
-      } else {
-        return {
-          'username': 'User',
-          'email': 'No email available'
-        };
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('User not logged in');
       }
+      
+      // Get current email for re-authentication
+      final String email = user.email ?? '';
+      if (email.isEmpty) {
+        throw Exception('Current user has no email');
+      }
+      
+      // Re-authenticate user
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: email,
+        password: currentPassword,
+      );
+      
+      await user.reauthenticateWithCredential(credential);
+      
+      // Update email in Firebase Auth
+      await user.updateEmail(newEmail);
+      
+      // Update email in Firestore
+      await _firestore
+          .collection(ACCOUNT_COLLECTION_REF)
+          .doc(user.uid)
+          .update({'account_email': newEmail});
     } catch (e) {
-      print('Error getting user info: $e');
-      return {
-        'username': 'User',
-        'email': 'No email available'
-      };
+      print('Error updating email: $e');
+      throw Exception(e);
+    }
+  }
+  
+  // Update password (requires re-authentication)
+  Future<void> updatePassword(String currentPassword, String newPassword) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+      
+      // Get current email for re-authentication
+      final String email = user.email ?? '';
+      if (email.isEmpty) {
+        throw Exception('Current user has no email');
+      }
+      
+      // Re-authenticate user
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: email,
+        password: currentPassword,
+      );
+      
+      await user.reauthenticateWithCredential(credential);
+      
+      // Update password in Firebase Auth
+      await user.updatePassword(newPassword);
+      
+      // Optional: Update hashed password in Firestore
+      // In most cases, it's better not to store the password in Firestore,
+      // since Firebase Auth handles password hashing and authentication
+    } catch (e) {
+      print('Error updating password: $e');
+      throw Exception(e);
     }
   }
 
@@ -113,22 +175,6 @@ class DatabaseAccountService {
       _firestore.collection('profile').doc(uid).set(profile.toJson());
     } catch (e) {
       print('Error adding profile: $e');
-    }
-  }
-
-  updateUsername(String uid, String text) {
-    try {
-      _firestore.collection(ACCOUNT_COLLECTION_REF).doc(uid).update({'account_username': text});
-    } catch (e) {
-      print('Error updating username: $e');
-    }
-  }
-
-  updateEmail(String uid, String text) {
-    try {
-      _firestore.collection(ACCOUNT_COLLECTION_REF).doc(uid).update({'account_email': text});
-    } catch (e) {
-      print('Error updating email: $e');
     }
   }
 
@@ -141,6 +187,24 @@ class DatabaseAccountService {
       return null;
     } catch (e) {
       print('Error getting user type: $e');
+      return null;
+    }
+  }
+
+  getUserInfo() {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        return {
+          'username': user.displayName ?? 'User',
+          'email': user.email ?? 'No email available',
+          'displayName': user.displayName ?? 'User',
+        };
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print('Error getting user info: $e');
       return null;
     }
   }

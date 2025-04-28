@@ -62,7 +62,7 @@ class _EditAccountState extends State<EditAccount> {
 
       // Update username if changed
       if (_usernameController.text != widget.userData['username']) {
-        await _accountService.updateUsername(user.uid, _usernameController.text);
+        await _accountService.updateUsername( _usernameController.text);
       }
 
       // Update email if changed
