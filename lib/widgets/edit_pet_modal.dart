@@ -11,6 +11,7 @@ import 'package:pawsmatch/services/firebase_pet_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:pawsmatch/services/supabase_client_service.dart'; // Add this import
+import 'package:pawsmatch/services/image_picker_service.dart';
 
 class EditPetModal extends StatefulWidget {
   final Pet pet;
@@ -69,6 +70,9 @@ class _EditPetModalState extends State<EditPetModal> {
     'Other'
   ];
 
+  // Add this field for the service
+  final ImagePickerService _imagePickerService = ImagePickerService();
+
   @override
   void initState() {
     super.initState();
@@ -119,114 +123,150 @@ class _EditPetModalState extends State<EditPetModal> {
   }
   
 
-  // Future<void> _pickMultipleImages() async {
-  //   setState(() {
-  //     _errorMessage = null;
-  //     _statusMessage = 'Selecting images...';
-  //   });
+  Future<void> _pickMultipleImages() async {
+    setState(() {
+      _errorMessage = null;
+      _statusMessage = 'Selecting images...';
+    });
     
-  //   try {
-  //     // Use FilePicker for more reliable web support
-  //     final result = await FilePicker.platform.pickFiles(
-  //       type: FileType.image,
-  //       allowMultiple: true,
-  //       withData: true, // Important for web to get the bytes
-  //     );
+    try {
+      final remainingSlots = 5 - (_existingPhotos.length - _photosToRemove.length + _selectedImages.length);
       
-  //     if (result != null && result.files.isNotEmpty) {
-  //       setState(() {
-  //         for (var file in result.files) {
-  //           // Only add the file if it has bytes
-  //           if (file.bytes != null) {
-  //             _selectedImages.add({
-  //               'bytes': file.bytes!,
-  //               'name': file.name,
-  //               'preview': file.bytes!,
-  //             });
-  //             _hasChanges = true;
-  //           }
-  //         }
-  //         _statusMessage = 'Selected ${result.files.length} images';
-  //       });
-  //     } else {
-  //       setState(() {
-  //         _statusMessage = 'No images selected';
-  //       });
-  //     }
-  //   } catch (e) {
-  //     setState(() {
-  //       _errorMessage = 'Error selecting images: $e';
-  //     });
-  //     print('Error picking images: $e');
-  //   }
-  // }
+      if (remainingSlots <= 0) {
+        setState(() {
+          _statusMessage = 'Maximum number of photos (5) reached';
+        });
+        return;
+      }
+      
+      // Use our platform-agnostic service
+      final selectedImages = await _imagePickerService.pickImages(
+        multiple: true,
+        maxImages: remainingSlots,
+      );
+      
+      if (selectedImages.isNotEmpty) {
+        setState(() {
+          for (var image in selectedImages) {
+            _selectedImages.add({
+              'bytes': image.bytes,
+              'name': image.name,
+              'preview': image.bytes,
+            });
+            _hasChanges = true;
+          }
+          _statusMessage = 'Selected ${selectedImages.length} images';
+        });
+      } else {
+        setState(() {
+          _statusMessage = 'No images selected';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error selecting images: $e';
+      });
+      print('Error picking images: $e');
+    }
+  }
 
-  // Future<List<String>> uploadImages() async {
-  //   List<String> newPhotoIds = [];
+  Future<List<String>> uploadImages() async {
+    List<String> newPhotoIds = [];
     
-  //   if (_selectedImages.isEmpty) {
-  //     return newPhotoIds;
-  //   }
+    if (_selectedImages.isEmpty) {
+      return newPhotoIds;
+    }
     
-  //   setState(() {
-  //     _isUploadingImages = true;
-  //     _statusMessage = 'Uploading images...';
-  //     _errorMessage = null;
-  //   });
+    setState(() {
+      _isUploadingImages = true;
+      _statusMessage = 'Uploading images...';
+      _errorMessage = null;
+    });
     
-  //   try {
-  //     final supabase = Supabase.instance.client;
+    try {
+      // Fix the null pointer exception in the session check
+      final client = Supabase.instance.client;
+      final currentSession = client.auth.currentSession;
       
-  //     for (int i = 0; i < _selectedImages.length; i++) {
-  //       // Generate a unique photo ID - SAME format as surrender_pet.dart
-  //       String photoId = _photoService.generateNewPhotoId();
-  //       final Uint8List bytes = _selectedImages[i]['bytes'];
+      // Debug session information
+      print("Current session: ${currentSession != null ? 'exists' : 'is null'}");
+      
+      // For anonymous uploads, we don't need a valid session
+      // So proceed with upload regardless of session status
+      
+      for (int i = 0; i < _selectedImages.length; i++) {
+        // Generate a unique photo ID
+        String photoId = _photoService.generateNewPhotoId();
+        final Uint8List bytes = _selectedImages[i]['bytes'];
         
-  //       // EXACT same path format as surrender_pet.dart
-  //       final path = 'uploads/$photoId';
+        // Use the same path format as in surrender_pet.dart
+        final fileName = photoId;
+        final path = 'uploads/$fileName';
         
-  //       setState(() {
-  //         _statusMessage = 'Uploading image ${i + 1} of ${_selectedImages.length}...';
-  //       });
+        setState(() {
+          _statusMessage = 'Uploading image ${i + 1} of ${_selectedImages.length}...';
+        });
         
-  //       try {
-  //         // Upload to Supabase storage - using uploadBinary as we have Uint8List for web
-  //         await supabase.storage
-  //             .from('pets')
-  //             .uploadBinary(path, bytes);
+        try {
+          print('Attempting upload to $path');
+          
+          // Simplify upload - don't check buckets which can cause errors
+          await client.storage
+              .from('pets')
+              .uploadBinary(
+                path,
+                bytes,
+                fileOptions: const FileOptions(
+                  contentType: 'image/jpeg',
+                  upsert: true,
+                ),
+              );
+          
+          print('Upload successful');
+          
+          // Get URL - handle potential null values
+          final photoUrl = await client.storage
+              .from('pets')
+              .createSignedUrl(path, 2838240000);
               
-  //         // Create a signed URL with same expiration as surrender_pet.dart
-  //         final photoUrl = await supabase.storage
-  //             .from('pets')
-  //             .createSignedUrl(path, 2838240000);
+          if (photoUrl != null && photoUrl.isNotEmpty) {
+            print('Got URL: $photoUrl');
+            
+            // Add to Firestore
+            await _photoService.addPhotoToFirestore(photoUrl, photoId);
+            newPhotoIds.add(photoId);
+            
+            setState(() {
+              _statusMessage = 'Uploaded ${newPhotoIds.length} of ${_selectedImages.length} images';
+            });
+          } else {
+            throw Exception('Generated URL was null or empty');
+          }
+        } catch (e) {
+          print('Error uploading image: $e');
           
-  //         // Add photo to Firestore - same as surrender_pet.dart
-  //         await _photoService.addPhotoToFirestore(photoUrl, photoId);
-  //         newPhotoIds.add(photoId);
-          
-  //         setState(() {
-  //           _statusMessage = 'Uploaded ${newPhotoIds.length} of ${_selectedImages.length} images';
-  //         });
-  //       } catch (e) {
-  //         print('Error uploading image: $e');
-  //       }
-  //     }
+          // No need for fallback - just report the error
+          setState(() {
+            _errorMessage = 'Upload failed: $e';
+          });
+        }
+      }
       
-  //     return newPhotoIds;
-  //   } catch (e) {
-  //     setState(() {
-  //       _errorMessage = 'Error uploading images: $e';
-  //     });
-  //     print('Upload error: $e');
-  //     return [];
-  //   } finally {
-  //     if (mounted) {
-  //       setState(() {
-  //         _isUploadingImages = false;
-  //       });
-  //     }
-  //   }
-  // }
+      return newPhotoIds;
+    } catch (e) {
+      print('Upload error: $e');
+      setState(() {
+        _errorMessage = 'Upload error: $e';
+      });
+      return [];
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingImages = false;
+        });
+      }
+    }
+  }
 
   Future<void> _submitForm() async {
     if (_formKey.currentState != null && _formKey.currentState!.validate()) {
@@ -239,10 +279,13 @@ class _EditPetModalState extends State<EditPetModal> {
       try {
         List<String> newPhotoIds = [];
 
-        // Only attempt to upload images if there are any selected
-        // if (_selectedImages.isNotEmpty) {
-        //   newPhotoIds = await uploadImages();
-        // }
+        // Uncomment and execute image uploads if there are any selected
+        if (_selectedImages.isNotEmpty) {
+          setState(() {
+            _statusMessage = 'Uploading images...';
+          });
+          newPhotoIds = await uploadImages();
+        }
 
         // Create a list for the final photo IDs
         List<String> allPhotoIds = [];
@@ -1071,9 +1114,8 @@ class _EditPetModalState extends State<EditPetModal> {
                                       onTap: (_isLoading || _isUploadingImages)
                                           ? null
                                           : () async {
-                                            //List<Uint8List>? bytesFromPicker = await ImagePickerWeb.getMultiImagesAsBytes();
-
-                                          },
+                                              await _pickMultipleImages();
+                                            },
                                       child: Container(
                                         width: 100,
                                         height: 100,
