@@ -55,17 +55,17 @@ class Organization {
         admin_ids = _parseStringList(json['admin_ids']),
         isVerified = json['isVerified'] as bool? ?? false,
         isRejected = json['isRejected'] as bool? ?? false, // Parse isRejected with default false
-        location = json['location'] as String?,
-        address = json['address'] as String?,
-        about = json['about'] as String?,
-        mission = json['mission'] as String?,
+        location = _parseString(json['location']),
+        address = _parseString(json['address']),
+        about = _parseString(json['about']),
+        mission = _parseString(json['mission']),
         services = json['services'] != null ? List<String>.from(json['services']) : null,
-        weekday_hours = json['weekday_hours'] as String?,
-        weekend_hours = json['weekend_hours'] as String?,
-        email = json['email'] as String?,
-        landline = json['landline'] as String?,
+        weekday_hours = _parseString(json['weekday_hours']),
+        weekend_hours = _parseString(json['weekend_hours']),
+        email = _parseString(json['email']),
+        landline = _parseString(json['landline']),
         contact_numbers = _parseContactNumbers(json['contact_numbers']),
-        logo_url = json['logo_url'] as String?,
+        logo_url = _parseString(json['logo_url']),
         social_media_links = _parseSocialMediaLinks(json['social_media_links']),
         photo_ids = json['photo_ids'] != null ? List<String>.from(json['photo_ids']) : null; // Parse photo_ids from json
 
@@ -94,43 +94,39 @@ class Organization {
   // New parsing method for contact numbers
   static List<String>? _parseContactNumbers(dynamic value) {
     if (value == null) return null;
-    
-    // Handle map format - convert to "label: value" strings
-    if (value is Map) {
-      final result = <String>[];
-      value.forEach((key, val) {
-        result.add("${key.toString()}: ${val.toString()}");
-      });
-      return result;
-    }
-    
-    // Handle direct list format
     if (value is List) {
-      return List<String>.from(value);
+      return value.map((e) => e.toString()).toList();
     }
-    
+    if (value is Map) {
+      // Convert map values to a list of strings
+      return value.values.map((e) => e.toString()).toList();
+    }
     return null;
   }
   
   // New parsing method for social media links
   static List<String>? _parseSocialMediaLinks(dynamic value) {
     if (value == null) return null;
-    
-    // Handle map format - convert to "platform: url" strings
-    if (value is Map) {
-      final result = <String>[];
-      value.forEach((platform, url) {
-        result.add("${platform.toString()}: ${url.toString()}");
-      });
-      return result;
-    }
-    
-    // Handle direct list format
     if (value is List) {
-      return List<String>.from(value);
+      return value.map((e) => e.toString()).toList();
     }
-    
+    if (value is Map) {
+      // Convert map values to a list of strings
+      return value.values.map((e) => e.toString()).toList();
+    }
     return null;
+  }
+
+  // Helper to safely parse String? fields
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    // If it's a Map or other type, try to convert to JSON string for debugging, or just return null
+    try {
+      return value.toString();
+    } catch (_) {
+      return null;
+    }
   }
 
   Organization copyWith({

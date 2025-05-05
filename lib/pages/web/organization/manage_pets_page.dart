@@ -8,6 +8,7 @@ import 'package:pawsmatch/widgets/pet_details_modal.dart';
 import 'package:pawsmatch/widgets/pet_adoption_requests_dialog.dart'; // Add this import
 import 'package:pawsmatch/widgets/edit_pet_modal.dart'; // Add this import
 import 'org_sidebar.dart';
+//import 'package:image_picker_web/image_picker_web.dart';
 
 class ManagePetsPage extends StatefulWidget {
   const ManagePetsPage({super.key});
@@ -420,9 +421,7 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
                       padding: EdgeInsets.only(top: 20), // Align with dropdown fields
                       child: InkWell(
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Add New Pet functionality coming soon!')),
-                          );
+                          _showAddPetModal();
                         },
                         child: Container(
                           height: 48,
@@ -789,6 +788,48 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
     );
   }
 
+  // Method to show add pet modal
+  void _showAddPetModal() {
+    // Create a default empty Pet object for new pet
+    final newPet = Pet(
+      pet_id: '',
+      pet_name: '',
+      species: '',
+      breed: '',
+      gender: '',
+      description: '',
+      birthdate: DateTime.now(),
+      vaccination_status: VaccinationStatus.None,
+      pet_status: PetStatus.Available,
+      address: '',
+      is_neutered_or_spayed: false,
+      acquisition_type: AcquisitionType.Rescued,
+      photo_id: [],
+    );
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return EditPetModal(
+          pet: newPet, 
+          onClose: () {
+            Navigator.of(context).pop();
+          },
+          onSuccess: () {
+            // Refresh pet list after adding
+            _loadPets();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('New pet added successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   // Empty state widget
   Widget _buildEmptyState() {
     return Center(
@@ -820,10 +861,8 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
           SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: () {
-              // Handle add new pets action
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Add New Pet functionality coming soon!')),
-              );
+              // Open add pet modal
+              _showAddPetModal();
             },
             icon: Icon(Icons.add, color: Colors.white),
             label: Text(

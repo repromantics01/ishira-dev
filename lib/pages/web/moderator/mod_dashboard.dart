@@ -41,11 +41,11 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
       // Load organizations based on selected filter
       if (_selectedFilter == 'Verification Requests') {
         // Get unverified and non-rejected organizations
-        organizations = await _organizationService.getUnverifiedOrgs();
+        organizations = await _organizationService.getOrganizationsByStatus(isVerified: false, isRejected: false);
         print('Loaded ${organizations.length} verification requests');
       } else if (_selectedFilter == 'Verified Organizations') {
         // Get verified organizations
-        organizations = await _organizationService.getOrganizationsByStatus(isVerified: true);
+        organizations = await _organizationService.getOrganizationsByStatus(isVerified: true, isRejected: false);
         print('Loaded ${organizations.length} verified organizations');
       }
       
@@ -412,7 +412,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                 ),
               ),
               
-              // Enhanced table background with shadow
+              // Enhanced table background without shadow
               Positioned(
                 left: 250,
                 top: 339.07,
@@ -422,19 +422,12 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFEDEDED),
                     borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
+                    // boxShadow: [ ... ], // Removed shadow
                   ),
                 ),
               ),
               
-              // Enhanced table header with gradient
+              // Enhanced table header without shadow
               Positioned(
                 left: 250,
                 top: 317,
@@ -451,36 +444,32 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                       ],
                     ),
                     borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 4,
-                        spreadRadius: 0,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
+                    // boxShadow: [ ... ], // Removed shadow
                   ),
                   // Use a Row for better alignment of column headers
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 35),
                     child: Row(
                       children: [
-                        // Organization Name
+                        // Organization Name - align left to match row
                         Expanded(
                           flex: 3,
-                          child: Text(
-                            'Organization Name',
-                            style: TextStyle(
-                              color: const Color(0xFF3B3B3B),
-                              fontSize: 20,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
+                          child: Align(
+                            alignment: Alignment.centerLeft, // Align left like the row
+                            child: Text(
+                              'Organization Name',
+                              style: TextStyle(
+                                color: const Color(0xFF3B3B3B),
+                                fontSize: 20,
+                                fontFamily: 'DM Sans',
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                         ),
                         
-                        // Date Requested
+                        // Date Requested - already center aligned
                         Expanded(
                           flex: 3,
                           child: Center(
@@ -497,7 +486,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                           ),
                         ),
                         
-                        // Status
+                        // Status - already center aligned
                         Expanded(
                           flex: 2,
                           child: Center(
@@ -514,7 +503,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                           ),
                         ),
                         
-                        // Action
+                        // Action - already center aligned
                         Expanded(
                           flex: 3,
                           child: Center(
@@ -798,233 +787,218 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
     );
   }
 
-  // Enhanced organization list with formal, polished styling - improved alignment
+  // Modern, color-coordinated organization list table
   Widget _buildEnhancedOrganizationList() {
     return Container(
+      margin: EdgeInsets.only(top: 0),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.transparent,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: ListView.builder(
-          padding: EdgeInsets.zero,
-          itemCount: _unverifiedOrgs.length,
-          itemBuilder: (context, index) {
-            final org = _unverifiedOrgs[index];
-            return Column(
+      child: ListView.separated(
+        padding: EdgeInsets.zero,
+        itemCount: _unverifiedOrgs.length,
+        separatorBuilder: (context, index) => Container(
+          height: 1,
+          color: const Color(0xFFE0D9D7),
+          margin: EdgeInsets.symmetric(horizontal: 0),
+        ),
+        itemBuilder: (context, index) {
+          final org = _unverifiedOrgs[index];
+          return Container(
+            height: 70,
+            padding: EdgeInsets.symmetric(horizontal: 35), // Add same padding as header
+            decoration: BoxDecoration(
+              color: index % 2 == 0 ? const Color(0xFFF9F6F4) : const Color(0xFFEDEDED),
+              borderRadius: BorderRadius.zero,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Organization row with consistent alignment to match headers
-                Container(
-                  height: 72,
-                  padding: EdgeInsets.symmetric(horizontal: 35), // Match header padding
-                  decoration: BoxDecoration(
-                    color: index % 2 == 0 ? Colors.white : Color(0xFFFAFAFA),
-                  ),
-                  child: Row(
+                // Organization Name
+                Expanded(
+                  flex: 3,
+                  child: Row( // Remove individual padding here
                     children: [
-                      // Organization name with logo placeholder - align with header
-                      Expanded(
-                        flex: 3,
-                        child: Row(
-                          children: [
-                            // Small logo or placeholder
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE5E5E5),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFD5D5D5),
-                                  width: 1,
-                                ),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
-                                child: org.logo_url != null && org.logo_url!.isNotEmpty
-                                  ? Image.network(
-                                      org.logo_url!,
-                                      fit: BoxFit.cover,
-                                      // Improved error handling for image loading
-                                      errorBuilder: (context, error, stackTrace) {
-                                        print("Error loading logo for ${org.org_name}: $error");
-                                        return Icon(
-                                          Icons.pets,
-                                          size: 18,
-                                          color: Colors.grey[600],
-                                        );
-                                      },
-                                      loadingBuilder: (context, child, loadingProgress) {
-                                        if (loadingProgress == null) return child;
-                                        return Center(
-                                          child: SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.grey.shade400),
-                                              value: loadingProgress.expectedTotalBytes != null
-                                                  ? loadingProgress.cumulativeBytesLoaded / 
-                                                      loadingProgress.expectedTotalBytes!
-                                                  : null,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    )
-                                  : Icon(
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5E5E5),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFD5D5D5),
+                            width: 1,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(19),
+                          child: org.logo_url != null && org.logo_url!.isNotEmpty
+                              ? Image.network(
+                                  org.logo_url!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
                                       Icons.pets,
-                                      size: 18,
+                                      size: 20,
                                       color: Colors.grey[600],
-                                    ),
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            // Organization name
-                            Expanded(
-                              child: Text(
-                                org.org_name,
-                                style: TextStyle(
-                                  color: const Color(0xFF3D3D3D),
-                                  fontSize: 15,
-                                  fontFamily: 'DM Sans',
-                                  fontWeight: FontWeight.w500,
+                                    );
+                                  },
+                                )
+                              : Icon(
+                                  Icons.pets,
+                                  size: 20,
+                                  color: Colors.grey[600],
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
                         ),
                       ),
-                      
-                      // Date requested - Center aligned like header
+                      SizedBox(width: 14),
                       Expanded(
-                        flex: 3,
-                        child: Center(
-                          child: Container(
-                            // Container to enforce alignment
-                            alignment: Alignment.center,
-                            width: double.infinity,
-                            child: Text(
-                              DateFormat('MMMM d, yyyy').format(org.date_created),
-                              style: TextStyle(
-                                color: const Color(0xFF3D3D3D),
-                                fontSize: 15,
-                                fontFamily: 'DM Sans',
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
+                        child: Text(
+                          org.org_name,
+                          style: TextStyle(
+                            color: const Color(0xFF725F63),
+                            fontSize: 16,
+                            fontFamily: 'DM Sans',
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.1,
                           ),
-                        ),
-                      ),
-                      
-                      // Status with colored badge - Center aligned like header
-                      Expanded(
-                        flex: 2,
-                        child: Center(
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: org.isVerified 
-                                  ? const Color(0xFFEBF6E0) 
-                                  : const Color(0xFFF6EFE0),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: org.isVerified 
-                                    ? const Color(0xFFC0D6B6) 
-                                    : const Color(0xFFEFCECB),
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              org.isVerified ? 'Verified' : 'Pending',
-                              style: TextStyle(
-                                color: org.isVerified 
-                                    ? const Color(0xFF4A7C59) 
-                                    : const Color(0xFF936262),
-                                fontSize: 13,
-                                fontFamily: 'DM Sans',
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      
-                      // Action button - Center aligned like header
-                      Expanded(
-                        flex: 3,
-                        child: Center(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => _viewOrganizationDetails(org),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                height: 40,
-                                padding: const EdgeInsets.symmetric(horizontal: 18),
-                                decoration: ShapeDecoration(
-                                  shape: RoundedRectangleBorder(
-                                    side: BorderSide(
-                                      width: 1.50,
-                                      color: const Color(0xFF545454),
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  shadows: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
-                                      blurRadius: 2,
-                                      offset: Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _selectedFilter == 'Verified Organizations' 
-                                        ? Icons.manage_accounts_outlined
-                                        : Icons.visibility_outlined,
-                                      size: 16,
-                                      color: const Color(0xFF545454),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      _selectedFilter == 'Verified Organizations' 
-                                        ? 'Manage'
-                                        : 'View Details',
-                                      style: TextStyle(
-                                        color: const Color(0xFF545454),
-                                        fontSize: 13,
-                                        fontFamily: 'DM Sans',
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],
                   ),
                 ),
-                
-                // Divider with consistent margins
-                if (index < _unverifiedOrgs.length - 1)
-                  Container(
-                    height: 1,
-                    color: const Color(0xFFEEEEEE),
-                    margin: EdgeInsets.symmetric(horizontal: 20),
+                // Date Requested
+                Expanded(
+                  flex: 3,
+                  child: Center( // Remove individual padding here
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB0CCCA).withOpacity(0.13),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        DateFormat('MMM d, yyyy').format(org.date_created),
+                        style: TextStyle(
+                          color: const Color(0xFF636363),
+                          fontSize: 15,
+                          fontFamily: 'DM Sans',
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ),
+                ),
+                // Status
+                Expanded(
+                  flex: 2,
+                  child: Center( // Remove individual padding here
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: org.isVerified
+                            ? const Color(0xFFB0CCCA).withOpacity(0.22)
+                            : const Color(0xFFF6EFE0),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: org.isVerified
+                              ? const Color(0xFF34C2BB)
+                              : const Color(0xFFE48C8A),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            org.isVerified ? Icons.verified : Icons.hourglass_top_rounded,
+                            size: 16,
+                            color: org.isVerified
+                                ? const Color(0xFF34C2BB)
+                                : const Color(0xFFE48C8A),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            org.isVerified ? 'Verified' : 'Pending',
+                            style: TextStyle(
+                              color: org.isVerified
+                                  ? const Color(0xFF34C2BB)
+                                  : const Color(0xFFE48C8A),
+                              fontSize: 14,
+                              fontFamily: 'DM Sans',
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Action
+                Expanded(
+                  flex: 3,
+                  child: Center( // Remove individual padding here
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _viewOrganizationDetails(org),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          height: 40,
+                          padding: const EdgeInsets.symmetric(horizontal: 22),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF5F0),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFB0CCCA),
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 2,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _selectedFilter == 'Verified Organizations'
+                                    ? Icons.manage_accounts_outlined
+                                    : Icons.visibility_outlined,
+                                size: 18,
+                                color: const Color(0xFF725F63),
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                _selectedFilter == 'Verified Organizations'
+                                    ? 'Manage'
+                                    : 'View Details',
+                                style: TextStyle(
+                                  color: const Color(0xFF725F63),
+                                  fontSize: 14,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ],
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1046,7 +1020,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
           // Use MediaQuery to ensure dialog fits within screen bounds
           insetPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 40),
           child: Container(
-            width: 800,
+            width: 1115,
             // Set maximum height based on available screen height
             constraints: BoxConstraints(
               maxHeight: availableHeight,
