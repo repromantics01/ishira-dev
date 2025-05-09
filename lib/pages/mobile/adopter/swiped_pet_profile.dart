@@ -394,7 +394,7 @@ class _SwipedPetProfileState extends State<SwipedPetProfile> {
                               ),
                             ),
                             TextSpan(
-                              text: 'about your adoption request.',
+                              text: ' about your adoption request.',
                               style: TextStyle(
                                 color: const Color(0xFF656565),
                                 fontSize: maxWidth < 300

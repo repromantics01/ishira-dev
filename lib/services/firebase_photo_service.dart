@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pawsmatch/models/photo.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -46,7 +47,7 @@ class FirebasePhotoService {
   }
 
   Future<DocumentSnapshot<Photo>> getPhotoWithId(String id) {
-    print('Requesting photo document with ID: $id');
+    //print('Requesting photo document with ID: $id');
     return _photoCollectionRef.doc(id).get();
   }
 
@@ -79,7 +80,7 @@ class FirebasePhotoService {
       // Filter out null results and add valid URLs to the list
       photoUrls = results.whereType<String>().toList();
       
-      print('Retrieved ${photoUrls.length} photo URLs from ${photoIds.length} photo IDs');
+      //print('Retrieved ${photoUrls.length} photo URLs from ${photoIds.length} photo IDs');
     } catch (e) {
       print('Error getting organization photo URLs: $e');
     }
@@ -87,21 +88,100 @@ class FirebasePhotoService {
     return photoUrls;
   }
 
-  
+  // Updated Supabase bucket names
+  static const String LOGO_BUCKET = 'organization-logo';
+  static const String PETS_BUCKET = 'pets';
+  static const String DOCUMENTS_BUCKET = 'organization_documents';
 
-  // String getPhotoURLFromSupabase(String photo_id, dynamic supabase) {
-  //   return supabase.storage.from('pet').createPublicUrl('uploads/$photo_id');
-  // }
+  // Completely refactored logo upload method with better error handling
+  Future<String?> uploadLogo(Uint8List imageBytes, String logoId) async {
+    try {
+      final client = Supabase.instance.client;
+      
+      // First ensure the client is properly authenticated
+      final session = client.auth.currentSession;
+      if (session == null) {
+        print('No active session, attempting anonymous upload');
+      } else {
+        print('Using authenticated session, JWT expires: ${session.expiresAt}');
+      }
+      
+      // Use a simpler path without subdirectories
+      final path = logoId;
+      
+      //print('Attempting direct upload to bucket: $LOGO_BUCKET, path: $path');
+      
+      // Upload directly without folders
+      await client.storage
+          .from(LOGO_BUCKET)
+          .uploadBinary(
+            path,
+            imageBytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true,
+            ),
+          );
+      
+      //print('Logo upload successful, generating URL');
+      
+      // Get the public URL
+      final logoUrl = client.storage
+          .from(LOGO_BUCKET)
+          .getPublicUrl(path);
+      
+      //print('Generated logo URL: $logoUrl');
+      
+      // Store URL in Firestore for reference
+      final photoId = generateNewPhotoId();
+      await addPhotoToFirestore(logoUrl, photoId);
+      
+      return logoUrl;
+    } catch (e) {
+      print('Error during logo upload process: $e');
+      return null;
+    }
+  }
 
-  // String getOrgLogoURLFromSupabase(String org_id, dynamic supabase) {
-  //   return supabase.storage.from('organization-logo').createPublicUrl('uploads/$org_id');
-  // }
+  // Updated method with consistent bucket name
+  String getLogoUrl(String logoId) {
+    final path = getOrganizationLogoPath(logoId);
+    final url = Supabase.instance.client.storage
+        .from(LOGO_BUCKET)
+        .getPublicUrl(path);
+    //print('Logo URL generated: $url');
+    return url;
+  }
 
-  // String getOrgDocURLFromSupabase(String org_id, dynamic supabase) {
-  //   return supabase.storage.from('organization_documents').createPublicUrl('uploads/$org_id');
-  // }
+  // Add utility methods for consistent path generation
+  String getPetPhotoPath(String photoId) {
+    return 'uploads/$photoId';
+  }
 
-  // String getOrgPhotosFromSupabase(String org_id, dynamic supabase) {
-  //   return supabase.storage.from('organization_photos').createPublicUrl('uploads/$org_id');
-  // }
+  String getOrganizationLogoPath(String logoId) {
+    return '$logoId';
+  }
+
+  String getOrganizationDocumentPath(String docId) {
+    return 'documents/$docId';
+  }
+
+  // Update the commented methods to use consistent paths
+  String getPhotoURLFromSupabase(String photoId) {
+    return Supabase.instance.client.storage
+        .from('pets')
+        .getPublicUrl(getPetPhotoPath(photoId));
+  }
+
+  String getOrgLogoURLFromSupabase(String logoId) {
+    return Supabase.instance.client.storage
+        .from('organizations')
+        .getPublicUrl(getOrganizationLogoPath(logoId));
+  }
+
+  String getOrgDocURLFromSupabase(String docId) {
+    return Supabase.instance.client.storage
+        .from('organizations')
+        .getPublicUrl(getOrganizationDocumentPath(docId));
+  }
 }

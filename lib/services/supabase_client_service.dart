@@ -43,7 +43,6 @@ class SupabaseClientService {
       
       if (supabaseUrl == null || supabaseUrl.isEmpty || supabaseUrl == "%SUPABASE_URL%" || 
           supabaseKey == null || supabaseKey.isEmpty || supabaseKey == "%SUPABASE_KEY%") {
-        print("WARNING: Using hardcoded Supabase credentials for testing - REPLACE IN PRODUCTION!");
          await dotenv.load(fileName: ".env");
         // Replace these with your actual Supabase URL and anon key for testing
         // supabaseUrl = 'https://pouskfxetpaocvzkzwsg.supabase.co';
@@ -67,21 +66,20 @@ class SupabaseClientService {
         );
         _client = Supabase.instance.client;
         _initialized = true;
-        print("Supabase client initialized successfully");
-        
+        print("Supabase client initialized successfully");        
         // Verify storage access
-        try {
-          final buckets = await _client!.storage.listBuckets();
-          print("Available storage buckets: ${buckets.map((b) => b.name).join(', ')}");
-          print("Looking for 'pets' bucket...");
-          if (buckets.any((b) => b.name == 'pets')) {
-            print("'pets' bucket found!");
-          } else {
-            print("WARNING: 'pets' bucket not found! Uploads will fail.");
-          }
-        } catch (e) {
-          print("Error accessing storage: $e");
-        }
+        // try {
+        //   final buckets = await _client!.storage.listBuckets();
+        //   print("Available storage buckets: ${buckets.map((b) => b.name).join(', ')}");
+        //   print("Looking for 'pets' bucket...");
+        //   if (buckets.any((b) => b.name == 'pets')) {
+        //     print("'pets' bucket found!");
+        //   } else {
+        //     print("WARNING: 'pets' bucket not found! Uploads will fail.");
+        //   }
+        // } catch (e) {
+        //   print("Error accessing storage: $e");
+        // }
       } else {
         print("Skipping Supabase initialization - missing credentials");
       }
