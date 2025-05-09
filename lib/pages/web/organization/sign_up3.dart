@@ -203,13 +203,13 @@ class _SignUpForm3State extends State<SignUpForm3> {
           continue;
         }
         
-        // Get public URL - fix the URL creation
-        final documentUrl = supabase.storage
+        // FIXED: Use createSignedUrl instead of getPublicUrl
+        final documentUrl = await supabase.storage
             .from('organization_documents')
-            .getPublicUrl(path);
+            .createSignedUrl(path, FirebasePhotoService.SIGNED_URL_EXPIRY);
             
         documentUrls.add(documentUrl);
-        //print('Uploaded document: $fileName, URL: $documentUrl');
+        print('Uploaded document: $fileName, URL: $documentUrl');
       } catch (e) {
         print('Error uploading document ${file.name}: $e');
         // Continue with other documents

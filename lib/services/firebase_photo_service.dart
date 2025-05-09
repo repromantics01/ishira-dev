@@ -93,6 +93,9 @@ class FirebasePhotoService {
   static const String PETS_BUCKET = 'pets';
   static const String DOCUMENTS_BUCKET = 'organization_documents';
 
+  // Define expiry time for signed URLs (30 days in seconds)
+  static const int SIGNED_URL_EXPIRY = 60 * 60 * 24 * 30;
+
   // Completely refactored logo upload method with better error handling
   Future<String?> uploadLogo(Uint8List imageBytes, String logoId) async {
     try {
@@ -109,8 +112,6 @@ class FirebasePhotoService {
       // Use a simpler path without subdirectories
       final path = logoId;
       
-      //print('Attempting direct upload to bucket: $LOGO_BUCKET, path: $path');
-      
       // Upload directly without folders
       await client.storage
           .from(LOGO_BUCKET)
@@ -123,14 +124,12 @@ class FirebasePhotoService {
             ),
           );
       
-      //print('Logo upload successful, generating URL');
-      
-      // Get the public URL
-      final logoUrl = client.storage
+      // Generate signed URL instead of public URL for private buckets
+      final logoUrl = await client.storage
           .from(LOGO_BUCKET)
-          .getPublicUrl(path);
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
       
-      //print('Generated logo URL: $logoUrl');
+      print('Generated signed logo URL: $logoUrl');
       
       // Store URL in Firestore for reference
       final photoId = generateNewPhotoId();
@@ -143,14 +142,19 @@ class FirebasePhotoService {
     }
   }
 
-  // Updated method with consistent bucket name
-  String getLogoUrl(String logoId) {
-    final path = getOrganizationLogoPath(logoId);
-    final url = Supabase.instance.client.storage
-        .from(LOGO_BUCKET)
-        .getPublicUrl(path);
-    //print('Logo URL generated: $url');
-    return url;
+  // Updated to create signed URLs instead of public URLs
+  Future<String> getLogoUrl(String logoId) async {
+    try {
+      final path = getOrganizationLogoPath(logoId);
+      final url = await Supabase.instance.client.storage
+          .from(LOGO_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+      print('Generated signed logo URL: $url');
+      return url;
+    } catch (e) {
+      print('Error generating signed logo URL: $e');
+      return ''; // Return empty string on error
+    }
   }
 
   // Add utility methods for consistent path generation
@@ -166,22 +170,74 @@ class FirebasePhotoService {
     return 'documents/$docId';
   }
 
-  // Update the commented methods to use consistent paths
-  String getPhotoURLFromSupabase(String photoId) {
-    return Supabase.instance.client.storage
-        .from('pets')
-        .getPublicUrl(getPetPhotoPath(photoId));
+  // Update methods to use signed URLs for private buckets
+  Future<String> getPhotoURLFromSupabase(String photoId) async {
+    try {
+      final path = getPetPhotoPath(photoId);
+      return await Supabase.instance.client.storage
+          .from(PETS_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+    } catch (e) {
+      print('Error generating signed pet photo URL: $e');
+      return ''; 
+    }
   }
 
-  String getOrgLogoURLFromSupabase(String logoId) {
-    return Supabase.instance.client.storage
-        .from('organizations')
-        .getPublicUrl(getOrganizationLogoPath(logoId));
+  Future<String> getOrgLogoURLFromSupabase(String logoId) async {
+    try {
+      final path = getOrganizationLogoPath(logoId);
+      return await Supabase.instance.client.storage
+          .from(LOGO_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+    } catch (e) {
+      print('Error generating signed organization logo URL: $e');
+      return '';
+    }
   }
 
-  String getOrgDocURLFromSupabase(String docId) {
-    return Supabase.instance.client.storage
-        .from('organizations')
-        .getPublicUrl(getOrganizationDocumentPath(docId));
+  Future<String> getOrgDocURLFromSupabase(String docId) async {
+    try {
+      final path = getOrganizationDocumentPath(docId);
+      return await Supabase.instance.client.storage
+          .from(DOCUMENTS_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+    } catch (e) {
+      print('Error generating signed organization document URL: $e');
+      return '';
+    }
+  }
+
+  // Helper method to convert stored public URLs to signed URLs if needed
+  Future<String> convertToSignedUrlIfNeeded(String storedUrl) async {
+    try {
+      // Check if this is already a signed URL (has 'sign' and 'token' in it)
+      if (storedUrl.contains('/sign/') && storedUrl.contains('token=')) {
+        return storedUrl; // Already a signed URL
+      }
+      
+      // Extract bucket and path from stored public URL
+      // Format: https://[instance].supabase.co/storage/v1/object/public/[bucket]/[path]
+      final uri = Uri.parse(storedUrl);
+      final pathSegments = uri.pathSegments;
+      
+      if (pathSegments.length < 5) {
+        print('Invalid stored URL format: $storedUrl');
+        return storedUrl;
+      }
+      
+      final bucketName = pathSegments[4];
+      final objectPath = pathSegments.sublist(5).join('/');
+      
+      // Generate a new signed URL
+      final signedUrl = await Supabase.instance.client.storage
+          .from(bucketName)
+          .createSignedUrl(objectPath, SIGNED_URL_EXPIRY);
+          
+      print('Converted public URL to signed URL: $signedUrl');
+      return signedUrl;
+    } catch (e) {
+      print('Error converting to signed URL: $e');
+      return storedUrl; // Return original on error
+    }
   }
 }
