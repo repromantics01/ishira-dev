@@ -1,13 +1,17 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:pawsmatch/models/organization.dart';
 import 'package:pawsmatch/services/firebase_organization_service.dart';
-import 'package:pawsmatch/services/firebase_photo_service.dart'; // Add this import
+import 'package:pawsmatch/services/firebase_photo_service.dart'; 
 import 'package:pawsmatch/widgets/logout_button.dart';
 import 'package:pawsmatch/utils/url_launcher_web.dart';
 import 'dart:math';
+import 'package:pawsmatch/services/notification_service.dart'; 
+import 'package:pawsmatch/services/firebase_account_service.dart';
+import 'package:pawsmatch/utils/email_js_interop.dart'; 
 
 class ModeratorDashboard extends StatefulWidget {
   const ModeratorDashboard({super.key});
@@ -19,7 +23,9 @@ class ModeratorDashboard extends StatefulWidget {
 class _ModeratorDashboardState extends State<ModeratorDashboard> {
   final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebasePhotoService _photoService = FirebasePhotoService(); // Add photo service
+  final FirebasePhotoService _photoService = FirebasePhotoService();
+  final NotificationService _notificationService = NotificationService(); // Add notification service
+  final DatabaseAccountService _accountService = DatabaseAccountService(); // Add account service
   
   List<Organization> _unverifiedOrgs = [];
   bool _isLoading = true;
@@ -30,6 +36,13 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
   void initState() {
     super.initState();
     _loadOrganizations(); 
+    
+    // Check EmailJS availability and ensure it's loaded
+    if (kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        EmailJsInterop.logStatus();
+      });
+    }
   }
 
   Future<void> _loadOrganizations() async {
@@ -90,15 +103,45 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
 
     if (!confirm) return;
 
-    // update organization verification status
+    // Update organization verification status
     try {
+      // Set loading indicator
+      _showLoadingDialog('Verifying organization...');
+
+      // Update organization status
       final updatedOrg = org.copyWith(isVerified: true);
       await _organizationService.updateOrganization(org.org_id, updatedOrg);
+      
+      // Get emails of organization admins
+      final adminEmails = <String>[];
+      for (final adminId in org.admin_ids) {
+        try {
+          final account = await _accountService.getAccount(adminId);
+          if (account.account_email.isNotEmpty) {
+            adminEmails.add(account.account_email);
+          }
+        } catch (e) {
+          print('Error getting admin email: $e');
+        }
+      }
+      
+      // Send verification email - use direct approach for testing
+      if (adminEmails.isNotEmpty) {
+        // Regular approach
+        await _notificationService.sendOrganizationVerificationEmail(
+          organization: updatedOrg,
+          recipientEmails: adminEmails,
+          isApproved: true,
+        );
+      }
+
+      // Hide loading dialog
+      Navigator.of(context).pop();
       
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${org.org_name} has been verified'),
+          content: Text('${org.org_name} has been verified and admins have been notified'),
           backgroundColor: Colors.green,
         ),
       );
@@ -106,6 +149,9 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
       // Reload organization list
       _loadOrganizations();
     } catch (e) {
+      // Hide loading dialog
+      Navigator.of(context).pop();
+      
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -116,14 +162,38 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
     }
   }
 
-  // Add new method to reject organization verification
   Future<void> _rejectOrganization(Organization org) async {
-    // Show confirmation dialog
+    final reasonController = TextEditingController();
+    
     bool confirm = await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Reject Organization'),
-        content: Text('Are you sure you want to reject ${org.org_name}\'s verification request?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Are you sure you want to reject ${org.org_name}\'s verification request?'),
+            SizedBox(height: 16),
+            Text(
+              'Reason for rejection (optional):',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[700],
+              ),
+            ),
+            SizedBox(height: 8),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                hintText: 'Enter reason for rejection',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.all(12),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -144,22 +214,48 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
 
     // Update organization rejection status
     try {
+      // Set loading indicator
+      _showLoadingDialog('Updating organization status...');
+
       // Add rejected field to organization
       final updatedOrg = org.copyWith(isRejected: true);
       await _organizationService.updateOrganization(org.org_id, updatedOrg);
       
-      // Show success message
+      // Get emails of organization admins
+      final adminEmails = <String>[];
+      for (final adminId in org.admin_ids) {
+        try {
+          final account = await _accountService.getAccount(adminId);
+          if (account.account_email.isNotEmpty) {
+            adminEmails.add(account.account_email);
+          }
+        } catch (e) {
+          print('Error getting admin email: $e');
+        }
+      }
+      
+      if (adminEmails.isNotEmpty) {
+        await _notificationService.sendOrganizationVerificationEmail(
+          organization: updatedOrg,
+          recipientEmails: adminEmails,
+          isApproved: false,
+          message: reasonController.text.trim(),
+        );
+      }
+
+      Navigator.of(context).pop();
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${org.org_name}\'s verification request has been rejected'),
+          content: Text('${org.org_name}\'s verification request has been rejected and admins have been notified'),
           backgroundColor: Colors.red[600],
         ),
       );
       
-      // Reload organization list
       _loadOrganizations();
     } catch (e) {
-      // Show error message
+      Navigator.of(context).pop();
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error rejecting organization: $e'),
@@ -168,6 +264,86 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
       );
     }
   }
+
+  // Helper method to show loading dialog
+  void _showLoadingDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF34C2BB)),
+            ),
+            SizedBox(height: 16),
+            Text(message),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Future<void> _testEmailDirectly() async {
+  //   // Show dialog to get test email
+  //   final testEmailController = TextEditingController();
+    
+  //   final result = await showDialog<bool>(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: Text('Test Email Sending'),
+  //       content: Column(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           Text('Enter email address for test:'),
+  //           SizedBox(height: 12),
+  //           TextField(
+  //             controller: testEmailController,
+  //             decoration: InputDecoration(
+  //               hintText: 'email@example.com',
+  //               border: OutlineInputBorder(),
+  //             ),
+  //             keyboardType: TextInputType.emailAddress,
+  //           ),
+  //         ],
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.of(context).pop(false),
+  //           child: Text('Cancel'),
+  //         ),
+  //         ElevatedButton(
+  //           onPressed: () => Navigator.of(context).pop(true),
+  //           child: Text('Send Test'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+    
+  //   // if (result == true && testEmailController.text.isNotEmpty) {
+  //   //   _showLoadingDialog('Sending test email...');
+      
+  //   //   try {
+  //   //     // First try the direct method
+  //   //     //DirectEmailTest.sendTestEmail(testEmailController.text.trim());
+        
+  //   //     // Then try the debug method
+  //   //     await EmailJSDebug.testEmail(testEmailController.text.trim());
+        
+  //   //     Navigator.of(context).pop(); // Close loading dialog
+        
+  //   //     ScaffoldMessenger.of(context).showSnackBar(
+  //   //       SnackBar(content: Text('Test email sent - check console for logs')),
+  //   //     );
+  //   //   } catch (e) {
+  //   //     Navigator.of(context).pop(); // Close loading dialog
+  //   //     ScaffoldMessenger.of(context).showSnackBar(
+  //   //       SnackBar(content: Text('Error: $e')),
+  //   //     );
+  //   //   }
+  //   // }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -192,13 +368,13 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                 ),
               ),
               
-              // Logo with refined styling
+              
               Positioned(
                 left: 79,
-                top: 67, // Adjusted for better vertical positioning
+                top: 67, 
                 child: SizedBox(
                   width: 536,
-                  height: 60, // Increased height for better appearance
+                  height: 60, 
                   child: Text.rich(
                     TextSpan(
                       children: [
@@ -210,7 +386,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                             fontFamily: 'Cherry Bomb One',
                             fontWeight: FontWeight.w400,
                             height: 0.17,
-                            letterSpacing: 1.2, // Add letter spacing
+                            letterSpacing: 1.2, 
                             shadows: [
                               Shadow(
                                 offset: Offset(0, 1),
@@ -228,7 +404,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                             fontFamily: 'Cherry Bomb One',
                             fontWeight: FontWeight.w400,
                             height: 0.17,
-                            letterSpacing: 1.2, // Add letter spacing
+                            letterSpacing: 1.2, 
                             shadows: [
                               Shadow(
                                 offset: Offset(0, 1),
@@ -244,8 +420,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                   ),
                 ),
               ),
-              
-              // Moderator title with refined styling
+                 
               Positioned(
                 left: 587,
                 top: 99,
@@ -267,13 +442,12 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                       fontSize: 28,
                       fontFamily: 'DM Sans',
                       fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5, // Add letter spacing
+                      letterSpacing: 1.5, 
                     ),
                   ),
                 ),
               ),
               
-              // Page title with enhanced styling
               Positioned(
                 left: 250,
                 top: 186,
@@ -288,16 +462,15 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                       fontFamily: 'DM Sans',
                       fontWeight: FontWeight.w700,
                       height: 0.44,
-                      letterSpacing: 0.5, // Add slight letter spacing
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
               ),
               
-              // Stylized subtitle text
               Positioned(
                 left: 250,
-                top: 215, // Position below the title
+                top: 215, 
                 child: Container(
                   width: 700,
                   child: Text(
@@ -314,7 +487,6 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                 ),
               ),
               
-              // Dropdown filter - Verification Requests
               Positioned(
                 left: 250,
                 top: 239,
@@ -391,11 +563,11 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                         child: DropdownButton<String>(
                           value: 'Filter',
                           isExpanded: true,
-                          underline: SizedBox(), // Remove underline
+                          underline: SizedBox(), 
                           style: TextStyle(
                             color: const Color(0xFF8F9098),
                             fontSize: 14,
-                            fontFamily: 'DM Sans', // Changed from 'Inter' to 'DM Sans'
+                            fontFamily: 'DM Sans', 
                             fontWeight: FontWeight.w400,
                           ),
                           onChanged: (String? newValue) {
@@ -498,6 +670,21 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                   ),
                 ),
               ),
+
+              // Test Email button
+              // Positioned(
+              //   right: 400,
+              //   top: 79,
+              //   child: ElevatedButton.icon(
+              //     icon: Icon(Icons.email),
+              //     label: Text('Test Email'),
+              //     onPressed: _testEmailDirectly,
+              //     style: ElevatedButton.styleFrom(
+              //       backgroundColor: Colors.grey[200],
+              //       foregroundColor: Colors.black87,
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ),
@@ -1007,16 +1194,13 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
   
   // Helper to create initials-based avatar when no logo is available
   Widget _buildInitialsAvatar(String name) {
-    // Get first letters of each word in organization name
     final nameParts = name.split(' ');
     String initials = '';
     
     if (nameParts.isNotEmpty) {
       if (nameParts.length == 1) {
-        // Just take first 2 letters for single word names
         initials = nameParts[0].substring(0, min(nameParts[0].length, 2)).toUpperCase();
       } else {
-        // Take first letter of first and last words
         initials = nameParts[0][0] + (nameParts.length > 1 ? nameParts[nameParts.length - 1][0] : '');
         initials = initials.toUpperCase();
       }
@@ -1027,14 +1211,14 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
     // Generate a color based on the name
     final int hashCode = name.hashCode;
     final List<Color> colorOptions = [
-      Color(0xFFE57373), // red
-      Color(0xFF81C784), // green
-      Color(0xFF64B5F6), // blue
-      Color(0xFFFFB74D), // orange
-      Color(0xFF9575CD), // purple
-      Color(0xFF4DB6AC), // teal
-      Color(0xFFF06292), // pink
-      Color(0xFFBA68C8), // purple
+      Color(0xFFE57373), 
+      Color(0xFF81C784), 
+      Color(0xFF64B5F6), 
+      Color(0xFFFFB74D), 
+      Color(0xFF9575CD), 
+      Color(0xFF4DB6AC), 
+      Color(0xFFF06292), 
+      Color(0xFFBA68C8), 
     ];
     
     final color = colorOptions[hashCode % colorOptions.length];
@@ -1053,7 +1237,6 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
     );
   }
   
-  // Helper method for status badge
   Widget _buildStatusBadge(Organization org) {
     Color backgroundColor;
     Color borderColor;
@@ -1227,7 +1410,6 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
     showDialog(
       context: context,
       builder: (context) {
-        // Get available screen size
         final screenSize = MediaQuery.of(context).size;
         final availableHeight = screenSize.height - 80;
         
@@ -1244,12 +1426,11 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
             ),
             padding: EdgeInsets.all(0),
             child: DefaultTabController(
-              length: 2, // Two tabs: Details and Documents
+              length: 2,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Enhanced header with refined gradient background
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -1275,7 +1456,6 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                     padding: EdgeInsets.symmetric(horizontal: 30, vertical: 24),
                     child: Row(
                       children: [
-                        // Organization logo with elevated design
                         Container(
                           width: 70,
                           height: 70,

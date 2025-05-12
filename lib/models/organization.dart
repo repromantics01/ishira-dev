@@ -8,7 +8,7 @@ class Organization {
   DateTime date_created;
   List<String> admin_ids;
   bool isVerified;
-  bool isRejected; // Add rejection status field
+  bool isRejected; 
   
   String? location;
   String? address;
@@ -20,9 +20,9 @@ class Organization {
   String? email;
   String? landline;
   List<String>? contact_numbers;
-  String? logo_url;  // Direct URL for quick access
+  String? logo_url;  
   List<String>? social_media_links;
-  List<String>? photo_ids;  // References to photos collection
+  List<String>? photo_ids;  
 
   Organization({
     required this.org_id,

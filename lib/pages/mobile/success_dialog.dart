@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:pawsmatch/pages/mobile/user_login.dart';
 
 class SuccessDialog extends StatefulWidget {
-  const SuccessDialog({super.key});
+  final bool needsVerification;
+
+  const SuccessDialog({super.key, this.needsVerification = false});
 
   @override
   State<SuccessDialog> createState() => _SuccessDialogState();
@@ -141,10 +143,12 @@ class _SuccessDialogState extends State<SuccessDialog> with SingleTickerProvider
                   // Subtitle with fade-in animation
                   FadeTransition(
                     opacity: _fadeAnimation,
-                    child: const SizedBox(
+                    child: SizedBox(
                       width: 293,
                       child: Text(
-                        'You can now proceed logging in your account credentials.',
+                        widget.needsVerification
+                            ? 'Please check your email to verify your account before logging in.'
+                            : 'You can now proceed logging in your account credentials.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Color(0xBA725F63),

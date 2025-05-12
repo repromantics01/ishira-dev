@@ -77,6 +77,66 @@ class _UserLoginState extends State<UserLogin> {
     }
   }
 
+  Future<void> _handleForgotPassword() async {
+    final _forgotPasswordEmailController = TextEditingController();
+    
+    // Show a dialog to get the email address
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Enter your email address to receive a password reset link.'),
+            SizedBox(height: 10),
+            TextField(
+              controller: _forgotPasswordEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'Email address',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              if (_forgotPasswordEmailController.text.isNotEmpty) {
+                try {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(
+                    email: _forgotPasswordEmailController.text.trim(),
+                  );
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Password reset email sent. Check your inbox.'),
+                  ));
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Error: ${e.toString()}'),
+                  ));
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF725F63),
+            ),
+            child: Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _getAuthErrorMessage(String code) {
     switch (code) {
       case 'user-not-found':
@@ -278,9 +338,7 @@ class _UserLoginState extends State<UserLogin> {
                             child: Padding(
                               padding: const EdgeInsets.only(top: 12, right: 8),
                               child: GestureDetector(
-                                onTap: () {
-                                  // TODO: Implement forgot password
-                                },
+                                onTap: _handleForgotPassword,
                                 child: Text(
                                   'Forgot Password?',
                                   textAlign: TextAlign.right,

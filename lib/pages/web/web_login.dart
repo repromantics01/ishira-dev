@@ -51,6 +51,96 @@ class _WebHomepageState extends State<WebHomepage> {
     }
   }
 
+  // Helper method to show pending verification modal
+  Future<void> _showPendingVerificationModal() async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Verification Pending'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.pending, size: 50, color: Colors.amber),
+              SizedBox(height: 16),
+              Text('Your organization is pending verification.'),
+              Text('Please wait for approval before accessing the dashboard.'),
+              SizedBox(height: 8),
+              Text(
+                'You will receive an email notification when your verification is complete.',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey[600],
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                FirebaseAuth.instance.signOut(); // Sign out the user
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Helper method to show rejected verification modal
+  Future<void> _showRejectedVerificationModal() async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Verification Rejected'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cancel, size: 50, color: Colors.red),
+              SizedBox(height: 16),
+              Text('Your organization verification has been rejected.'),
+              Text('Thank you for your interest in PawsMatch.'),
+              SizedBox(height: 8),
+              Text(
+                'Please check your email for detailed information about the rejection reason.',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'You may apply again in the future with additional documentation.',
+                style: TextStyle(
+                  color: Colors.grey[700],
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                FirebaseAuth.instance.signOut(); // Sign out the user
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _handleLogin() async {
     setState(() {
       _isAuthenticating = true;
@@ -103,9 +193,8 @@ class _WebHomepageState extends State<WebHomepage> {
       } else if (account.account_type == AccountType.OrgAdmin) {
         // Get organization info for organization admin
         final organization = await _organizationService.getOrganizationById(user.uid);
-        print('Organization loaded: ${organization?.org_name}');
+        //print('Organization loaded: ${organization?.org_name}');
 
-        // If not found, try by admin_ids arrayContains user.uid (for legacy/migration support)
         Organization? orgToPass = organization;
         if (orgToPass == null) {
           final orgSnapshot = await FirebaseFirestore.instance
@@ -126,16 +215,24 @@ class _WebHomepageState extends State<WebHomepage> {
           return;
         }
         
-        // Check if organization verification was rejected
+        // Check organization verification status
         if (orgToPass.isRejected) {
+          // Organization was rejected - show rejection modal
           setState(() {
-            _errorMessage = 'Your organization verification has been rejected. Please contact support.';
             _isAuthenticating = false;
           });
+          await _showRejectedVerificationModal();
+          return;
+        } else if (!orgToPass.isVerified) {
+          // Organization is still pending verification
+          setState(() {
+            _isAuthenticating = false;
+          });
+          await _showPendingVerificationModal();
           return;
         }
 
-        // Navigate to organization dashboard
+        // Organization is verified - proceed to dashboard
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -176,6 +273,61 @@ class _WebHomepageState extends State<WebHomepage> {
         _isAuthenticating = false;
       });
     }
+  }
+
+  // Add this method to handle password reset
+  Future<void> _handleForgotPassword() async {
+    final _forgotPasswordEmailController = TextEditingController();
+    
+    // Show dialog to get email
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Enter your email address to receive a password reset link.'),
+            SizedBox(height: 16),
+            TextField(
+              controller: _forgotPasswordEmailController,
+              decoration: InputDecoration(
+                labelText: 'Email Address',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (_forgotPasswordEmailController.text.isNotEmpty) {
+                try {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(
+                    email: _forgotPasswordEmailController.text.trim(),
+                  );
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Password reset email sent. Please check your inbox.'))
+                  );
+                } catch (e) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}'))
+                  );
+                }
+              }
+            },
+            child: Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -491,15 +643,18 @@ class _WebHomepageState extends State<WebHomepage> {
               child: SizedBox(
                 width: 133,
                 height: 19,
-                child: Text(
-                  'Forgot Password?',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: const Color(0xFF545454),
-                    fontSize: 12,
-                    fontFamily: 'DM Sans',
-                    fontWeight: FontWeight.w400,
-                    height: 1.33,
+                child: InkWell(
+                  onTap: _handleForgotPassword,
+                  child: Text(
+                    'Forgot Password?',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: const Color(0xFF545454),
+                      fontSize: 12,
+                      fontFamily: 'DM Sans',
+                      fontWeight: FontWeight.w400,
+                      height: 1.33,
+                    ),
                   ),
                 ),
               ),

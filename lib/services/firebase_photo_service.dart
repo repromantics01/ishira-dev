@@ -207,7 +207,6 @@ class FirebasePhotoService {
     }
   }
 
-  // Helper method to convert stored public URLs to signed URLs if needed
   Future<String> convertToSignedUrlIfNeeded(String storedUrl) async {
     try {
       // Check if this is already a signed URL (has 'sign' and 'token' in it)
@@ -215,8 +214,6 @@ class FirebasePhotoService {
         return storedUrl; // Already a signed URL
       }
       
-      // Extract bucket and path from stored public URL
-      // Format: https://[instance].supabase.co/storage/v1/object/public/[bucket]/[path]
       final uri = Uri.parse(storedUrl);
       final pathSegments = uri.pathSegments;
       
