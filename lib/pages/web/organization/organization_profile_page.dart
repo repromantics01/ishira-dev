@@ -1217,6 +1217,83 @@ class _OrganizationProfilePageState extends State<OrganizationProfilePage> {
                     // Second section: Photo gallery in landscape format
                     if (_photoUrls.isNotEmpty)
                       _buildPhotoGallerySection(availableWidth),
+                    
+                    // Add logout button section after photo gallery
+                    SizedBox(height: 60),
+                    
+                    // Divider before logout
+                    Center(
+                      child: Container(
+                        width: availableWidth * 0.5,
+                        child: Divider(
+                          color: const Color(0xFFC5C6CC),
+                          thickness: 1,
+                        ),
+                      ),
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Logout button
+                    Center(
+                      child: Container(
+                        width: 180,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            // Show confirmation dialog before logout
+                            final bool confirmLogout = await showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Confirm Logout'),
+                                content: Text('Are you sure you want to log out?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    child: Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.of(context).pop(true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red[50],
+                                      foregroundColor: Colors.red[700],
+                                    ),
+                                    child: Text('Logout'),
+                                  ),
+                                ],
+                              ),
+                            ) ?? false;
+                            
+                            if (confirmLogout) {
+                              try {
+                                await FirebaseAuth.instance.signOut();
+                                if (context.mounted) {
+                                  Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                                }
+                              } catch (e) {
+                                print('Error during logout: $e');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error signing out. Please try again.'))
+                                );
+                              }
+                            }
+                          },
+                          icon: Icon(Icons.logout, size: 18),
+                          label: Text('SIGN OUT'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF545454),
+                            padding: EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              side: BorderSide(width: 1, color: const Color(0xFFC5C6CC)),
+                              borderRadius: BorderRadius.circular(250),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    SizedBox(height: 40),
                   ],
                 ),
               );
@@ -1423,6 +1500,56 @@ class _OrganizationProfilePageState extends State<OrganizationProfilePage> {
               ),
             ),
           ),
+          
+          // SizedBox(height: 60),
+          
+          // // Divider before logout
+          // Center(
+          //   child: Container(
+          //     width: availableWidth * 0.5,
+          //     child: Divider(
+          //       color: const Color(0xFFC5C6CC),
+          //       thickness: 1,
+          //     ),
+          //   ),
+          // ),
+          
+          // SizedBox(height: 24),
+          
+          // // Logout button
+          // Center(
+          //   child: Container(
+          //     width: 180,
+          //     child: ElevatedButton.icon(
+          //       onPressed: () async {
+          //         try {
+          //           await FirebaseAuth.instance.signOut();
+          //           if (context.mounted) {
+          //             Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+          //           }
+          //         } catch (e) {
+          //           print('Error during logout: $e');
+          //           ScaffoldMessenger.of(context).showSnackBar(
+          //             SnackBar(content: Text('Error signing out. Please try again.'))
+          //           );
+          //         }
+          //       },
+          //       icon: Icon(Icons.logout, size: 18),
+          //       label: Text('SIGN OUT'),
+          //       style: ElevatedButton.styleFrom(
+          //         backgroundColor: Colors.white,
+          //         foregroundColor: const Color(0xFF545454),
+          //         padding: EdgeInsets.symmetric(vertical: 14),
+          //         shape: RoundedRectangleBorder(
+          //           side: BorderSide(width: 1, color: const Color(0xFFC5C6CC)),
+          //           borderRadius: BorderRadius.circular(250),
+          //         ),
+          //         elevation: 0,
+          //       ),
+          //     ),
+          //   ),
+          // ),
+          
         ],
       ),
     );

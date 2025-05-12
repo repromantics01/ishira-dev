@@ -3,6 +3,7 @@ import 'package:pawsmatch/models/pet.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/widgets/user_profile_modal.dart'; // Add this import
+import 'package:pawsmatch/widgets/user_profile_image.dart'; // Add this import
 
 class PetDetailsModal extends StatefulWidget {
   final Pet pet;
@@ -31,6 +32,7 @@ class _PetDetailsModalState extends State<PetDetailsModal> {
   List<String> _photoUrls = [];
   String? _surrendererName;
   String? _surrendererId; // Keep this field to store surrenderer account ID
+  String? _surrendererProfileImage; // Add this field to store surrenderer profile image URL
 
   @override
   void initState() {
@@ -107,6 +109,7 @@ class _PetDetailsModalState extends State<PetDetailsModal> {
               final firstName = profileDoc.data()['first_name'] as String? ?? '';
               final lastName = profileDoc.data()['last_name'] as String? ?? '';
               final address = profileDoc.data()['address'] as String? ?? 'Address not available';
+              final profileImageUrl = profileDoc.data()['profile_image_url'] as String?;
               
               if (mounted) {
                 setState(() {
@@ -114,6 +117,7 @@ class _PetDetailsModalState extends State<PetDetailsModal> {
                   if (_surrendererName!.isEmpty) {
                     _surrendererName = 'Unknown User';
                   }
+                  _surrendererProfileImage = profileImageUrl;
                 });
               }
             }
@@ -125,7 +129,7 @@ class _PetDetailsModalState extends State<PetDetailsModal> {
     }
   }
   
-  // Update method to show user profile modal without email
+  // Update method to show user profile modal with profile image
   void _showSurrendererProfile(BuildContext context) {
     if (_surrendererId != null) {
       showDialog(
@@ -135,6 +139,7 @@ class _PetDetailsModalState extends State<PetDetailsModal> {
             userName: _surrendererName ?? 'Unknown User',
             userAddress: 'Address information not available',
             userId: _surrendererId!,
+            profileImageUrl: _surrendererProfileImage,
             onClose: () {
               Navigator.of(context).pop();
             },

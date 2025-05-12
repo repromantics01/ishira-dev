@@ -8,6 +8,7 @@ import 'package:pawsmatch/models/message.dart';
 import 'package:pawsmatch/services/firebase_messaging_service.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
 import 'package:pawsmatch/widgets/message_thread_view.dart';
+import 'package:pawsmatch/widgets/user_profile_image.dart'; // Add this import for user profile image
 
 class MessagesPage extends StatefulWidget {
   final String? initialThreadId;
@@ -30,6 +31,7 @@ class _MessagesPageState extends State<MessagesPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _searchController = TextEditingController();
   final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
+  final FirebaseProfileService _profileService = FirebaseProfileService(); // Add this line
   
   String _searchQuery = '';
   List<MessageThread> _threads = [];
@@ -491,27 +493,9 @@ class _MessagesPageState extends State<MessagesPage> {
                                 organizationId: _currentOrgID
                               ),
                               builder: (context, snapshot) {
-                                // Handle loading state
+                                // Handle loading state with skeleton loaders
                                 if (snapshot.connectionState == ConnectionState.waiting && _isLoading) {
-                                  return Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFC0D6B6)),
-                                        ),
-                                        SizedBox(height: 16),
-                                        Text(
-                                          'Loading conversations...',
-                                          style: TextStyle(
-                                            color: const Color(0xFF545454),
-                                            fontSize: 16,
-                                            fontFamily: 'DM Sans',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
+                                  return _buildLoadingThreads();
                                 }
                                 
                                 // Use stream data if available, otherwise use fallback data
@@ -739,29 +723,15 @@ class _MessagesPageState extends State<MessagesPage> {
               padding: const EdgeInsets.all(12.0),
               child: Row(
                 children: [
-                  // Avatar with notification badge
+                  // Avatar with notification badge - Use UserProfileImage widget now
                   Stack(
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFFF5F5F5),
-                          border: Border.all(
-                            color: isSelected ? Color(0xFFC0D6B6) : Colors.grey.shade200,
-                            width: 2,
-                          ),
-                          image: otherParticipantAvatar != null ?
-                            DecorationImage(
-                              image: NetworkImage(otherParticipantAvatar),
-                              fit: BoxFit.cover,
-                            ) :
-                            DecorationImage(
-                              image: NetworkImage('https://placehold.co/50x50/E4E4E4/545454?text=${otherParticipantName.isNotEmpty ? otherParticipantName[0].toUpperCase() : "?"}'),
-                              fit: BoxFit.cover,
-                            ),
-                        ),
+                      UserProfileImage(
+                        imageUrl: otherParticipantAvatar,
+                        fallbackText: otherParticipantName,
+                        size: 50,
+                        borderColor: isSelected ? Color(0xFFC0D6B6) : Colors.grey.shade200,
+                        borderWidth: 2.0,
                       ),
                       if (hasUnread)
                         Positioned(
@@ -898,6 +868,79 @@ class _MessagesPageState extends State<MessagesPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // Add this new method for thread skeleton loaders
+  Widget _buildLoadingThreads() {
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      itemCount: 5, // Show 5 skeleton items
+      itemBuilder: (context, index) {
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                // Avatar skeleton
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey.shade200,
+                  ),
+                ),
+                SizedBox(width: 12),
+                
+                // Message content skeleton
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name skeleton
+                      Container(
+                        width: 120 + (index * 20) % 60, // Varying widths
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      
+                      // Message preview skeleton
+                      Container(
+                        width: double.infinity,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Time skeleton
+                Container(
+                  width: 30,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

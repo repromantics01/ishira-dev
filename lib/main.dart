@@ -151,6 +151,10 @@ class WebApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: WebHomepage(),
+      routes: {
+        '/login': (context) => WebHomepage(),
+        // ...add other web routes here if needed...
+      },
     );
   }
 }

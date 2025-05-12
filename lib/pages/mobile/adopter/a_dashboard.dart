@@ -5,14 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
-import 'package:pawsmatch/services/firebase_photo_service.dart'; // Add this import
+import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/pages/mobile/adopter/swiped_pets.dart';
 import 'package:pawsmatch/pages/mobile/adopter/view_adoptions.dart';
 import 'package:pawsmatch/models/pet.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/pages/mobile/adopter/pet_swiper_page.dart';
-import 'package:pawsmatch/utils/navigation_helper.dart'; // Add this import
+import 'package:pawsmatch/utils/navigation_helper.dart'; 
+import 'package:pawsmatch/widgets/user_profile_image.dart'; 
 
 class AdopterDashboard extends StatefulWidget {
   const AdopterDashboard({Key? key}) : super(key: key);
@@ -32,6 +33,7 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
   String _username = "User"; 
   String _userEmail = "";
   String _displayName = "User";
+  String? _profileImageUrl; // Add this variable
 
   Pet? _currentPet;
   bool _loadingPet = true;
@@ -56,7 +58,6 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
       String email = await _accountService.getCurrentEmail();
       print('Email loaded: $email');
       
-      // Check if Firebase is properly initialized and user is logged in
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         print('Loading data for uid: ${user.uid}');
@@ -66,6 +67,12 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
       Map<String, String> dashboardInfo = await _profileService.getUserDashboardInfo();
       print('Dashboard info loaded: $dashboardInfo');
       String displayName = dashboardInfo['displayName'] ?? 'User';
+      
+      // Get profile data with image URL
+      if (user != null) {
+        final profileData = await _profileService.getUserProfile(user.uid);
+        _profileImageUrl = profileData?['profile_image_url'] as String?;
+      }
       
       print('Final values - Username: $username, Email: $email, DisplayName: $displayName');
       
@@ -268,23 +275,11 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
               ),
               child: Row(
                 children: [
-                  // Profile image
-                  Container(
-                    width: 83,
-                    height: 83,
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFFDDCAC0),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(55),
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.person,
-                        size: 50,
-                        color: const Color(0xFF725F63),
-                      ),
-                    ),
+                  // Updated profile image
+                  UserProfileImage(
+                    imageUrl: _profileImageUrl,
+                    fallbackText: _displayName,
+                    size: 83,
                   ),
                   SizedBox(width: 30),
                   // User info

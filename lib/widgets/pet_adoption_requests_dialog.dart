@@ -8,6 +8,7 @@ import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:pawsmatch/widgets/user_profile_modal.dart'; // Add this import
+import 'package:pawsmatch/widgets/user_profile_image.dart'; // Add this import
 
 class PetAdoptionRequestsDialog extends StatefulWidget {
   final Pet pet;
@@ -147,7 +148,7 @@ class _PetAdoptionRequestsDialogState extends State<PetAdoptionRequestsDialog> {
       final lastName = profile['last_name'] as String? ?? '';
       final fullName = '$firstName $lastName'.trim();
       final address = profile['address'] as String? ?? 'No address provided';
-      final profilePictureUrl = profile['profile_photo_url'] as String?;
+      final profilePictureUrl = profile['profile_image_url'] as String?;
       
       showDialog(
         context: context,
@@ -178,6 +179,20 @@ class _PetAdoptionRequestsDialogState extends State<PetAdoptionRequestsDialog> {
         SnackBar(content: Text('Could not load user profile')),
       );
     }
+  }
+
+  Widget _buildAdopterAvatar(String accountId) {
+    final profile = _userProfiles[accountId];
+    final profileImageUrl = profile != null ? profile['profile_image_url'] as String? : null;
+    final firstName = profile != null ? profile['first_name'] as String? ?? '' : '';
+    final lastName = profile != null ? profile['last_name'] as String? ?? '' : '';
+    final fullName = '$firstName $lastName'.trim();
+    
+    return UserProfileImage(
+      imageUrl: profileImageUrl,
+      fallbackText: fullName.isEmpty ? accountId.substring(0, 2) : fullName,
+      size: 45,
+    );
   }
 
   @override

@@ -476,7 +476,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                   child: Text(
                     _selectedFilter == 'Verification Requests' 
                       ? 'Review and approve organization verification requests' 
-                      : 'Manage verified organizations',
+                      : 'View verified organizations',
                     style: TextStyle(
                       color: const Color(0xFF636363).withOpacity(0.7),
                       fontSize: 18,
@@ -642,8 +642,35 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(10),
                       onTap: () async {
-                        await FirebaseAuth.instance.signOut();
-                        Navigator.of(context).pushReplacementNamed('/login');
+                        // Show confirmation dialog before logout
+                        final bool confirmLogout = await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text('Confirm Logout'),
+                            content: Text('Are you sure you want to log out?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(context).pop(true),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red[50],
+                                  foregroundColor: Colors.red[700],
+                                ),
+                                child: Text('Logout'),
+                              ),
+                            ],
+                          ),
+                        ) ?? false;
+                        
+                        if (confirmLogout) {
+                          await FirebaseAuth.instance.signOut();
+                          if (mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                          }
+                        }
                       },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1310,7 +1337,7 @@ class _ModeratorDashboardState extends State<ModeratorDashboard> {
         ),
         label: Text(
           _selectedFilter == 'Verified Organizations'
-              ? 'Manage'
+              ? 'View'
               : 'View',
           style: TextStyle(
             fontSize: 12,

@@ -5,6 +5,7 @@ import 'package:pawsmatch/models/pet.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pawsmatch/widgets/user_profile_image.dart'; // Add this import
 
 class RequestDetailsModal extends StatefulWidget {
   final dynamic request; // Can be Surrender or Adopt
@@ -233,31 +234,13 @@ class _RequestDetailsModalState extends State<RequestDetailsModal> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // User profile image
-                              Container(
-                                width: 139.03,
-                                height: 139.03,
-                                decoration: ShapeDecoration(
-                                  color: const Color(0xFFF5F5F5),
-                                  shape: RoundedRectangleBorder(
-                                    side: BorderSide(
-                                      width: 1,
-                                      color: Colors.black.withOpacity(0.3),
-                                    ),
-                                    borderRadius: BorderRadius.circular(73),
-                                  ),
-                                  image: widget.userProfile != null && widget.userProfile!['profile_photo_url'] != null
-                                    ? DecorationImage(
-                                        image: NetworkImage(widget.userProfile!['profile_photo_url']),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : null,
-                                ),
-                                child: widget.userProfile == null || widget.userProfile!['profile_photo_url'] == null
-                                  ? Icon(Icons.person, size: 80, color: Colors.grey)
-                                  : null,
+                              // User profile image - updated
+                              UserProfileImage(
+                                imageUrl: widget.userProfile?['profile_image_url'] as String?,
+                                fallbackText: _getUserFullName(),
+                                size: 60,
                               ),
-                              SizedBox(width: 16),
+                              SizedBox(width: 15),
                               
                               // User information
                               Expanded(
@@ -915,5 +898,17 @@ class _RequestDetailsModalState extends State<RequestDetailsModal> {
       return widget.userProfile!['address'];
     }
     return 'No address provided';
+  }
+
+  // Helper method to get user's full name
+  String _getUserFullName() {
+    if (widget.userProfile != null) {
+      final firstName = widget.userProfile!['first_name'] as String? ?? '';
+      final lastName = widget.userProfile!['last_name'] as String? ?? '';
+      if (firstName.isNotEmpty || lastName.isNotEmpty) {
+        return '$firstName $lastName'.trim();
+      }
+    }
+    return widget.userAccount?.account_username ?? 'User';
   }
 }
