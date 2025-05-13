@@ -32,6 +32,10 @@ PawsMatch is a Flutter-based application designed to help pet rescue organizatio
         <td>2025-04-28</td>
     </tr>
     <tr>
+        <td>IS.010.006</td>
+        <td>2025-05-13</td>
+    </tr>
+    <tr>
         <td>...</td>
         <td>...</td>
     </tr>
@@ -43,6 +47,10 @@ PawsMatch is a Flutter-based application designed to help pet rescue organizatio
 - Created platform-specific implementations of web utilities
 - Refactored EmailJS integration for better cross-platform support
 - Improved error handling for web vs mobile environments
+- Introduced modals for pending/rejected verification and updated organization verification logic.
+- Updated signup flow to use a unified SignUpFormData and improved navigation.
+- Enhanced password reset handling, success dialogs, and improved profile image management and UI consistency.
+- Extended models to support profile image URLs and improved parsing helpers.
 
 ## IS.010.005 Release Notes
 - Enhanced message thread view and application details modal
