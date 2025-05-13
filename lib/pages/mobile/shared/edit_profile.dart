@@ -1,7 +1,12 @@
+import 'dart:typed_data';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/profile.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
+import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:pawsmatch/widgets/logout_button.dart';
 
 class EditProfile extends StatefulWidget {
@@ -16,6 +21,7 @@ class EditProfile extends StatefulWidget {
 class _EditProfileState extends State<EditProfile> {
   final _formKey = GlobalKey<FormState>();
   final FirebaseProfileService _profileService = FirebaseProfileService();
+  final FirebasePhotoService _photoService = FirebasePhotoService();
   
   late final TextEditingController _firstNameController;
   late final TextEditingController _middleNameController;
@@ -24,7 +30,13 @@ class _EditProfileState extends State<EditProfile> {
   late final TextEditingController _addressController;
   
   bool _isLoading = false;
+  bool _isUploading = false;
   String? _errorMessage;
+  
+  // Profile image state variables
+  String? _currentProfileImageUrl;
+  PlatformFile? _selectedImageFile;
+  Uint8List? _selectedImageBytes;
 
   @override
   void initState() {
@@ -34,6 +46,9 @@ class _EditProfileState extends State<EditProfile> {
     _lastNameController = TextEditingController(text: widget.userData['lastName']);
     _suffixController = TextEditingController(text: widget.userData['suffix']);
     _addressController = TextEditingController(text: widget.userData['address']);
+    
+    // Initialize profile image URL if available
+    _currentProfileImageUrl = widget.userData['profileImageUrl'];
   }
 
   @override
@@ -44,6 +59,112 @@ class _EditProfileState extends State<EditProfile> {
     _suffixController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  // Method to pick an image
+  Future<void> _pickImage() async {
+    try {
+      print('Starting image picker...');
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          _selectedImageFile = result.files.first;
+        });
+        
+        print('File selected: ${_selectedImageFile!.name}');
+        
+        // Handle web platform (uses bytes)
+        if (kIsWeb && _selectedImageFile?.bytes != null) {
+          setState(() {
+            _selectedImageBytes = _selectedImageFile!.bytes;
+            print('Web platform: Image bytes loaded, size: ${_selectedImageBytes!.length}');
+          });
+        } 
+        // Handle mobile platform (uses path)
+        else if (!kIsWeb && _selectedImageFile?.path != null) {
+          try {
+            File file = File(_selectedImageFile!.path!);
+            print('Reading file from path: ${_selectedImageFile!.path}');
+            
+            if (file.existsSync()) {
+              final bytes = await file.readAsBytes();
+              setState(() {
+                _selectedImageBytes = bytes;
+                print('Mobile platform: Read ${_selectedImageBytes!.length} bytes from file');
+              });
+            } else {
+              print('File does not exist at path: ${_selectedImageFile!.path}');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Selected file not found'))
+              );
+            }
+          } catch (e) {
+            print('Error reading file: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error reading file: $e'))
+            );
+          }
+        }
+      } else {
+        print('No file selected or picker was canceled');
+      }
+    } catch (e) {
+      print('Error in file picker: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error selecting image: $e'))
+      );
+    }
+  }
+
+  // Method to upload the selected image
+  Future<String?> _uploadProfileImage() async {
+    if (_selectedImageBytes == null) {
+      print('No image bytes to upload');
+      return _currentProfileImageUrl;
+    }
+    
+    setState(() {
+      _isUploading = true;
+    });
+    
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      print('Uploading image bytes, size: ${_selectedImageBytes!.length}');
+      
+      // Upload image to Supabase
+      final imageUrl = await _photoService.uploadProfileImage(
+        _selectedImageBytes!, 
+        user.uid
+      );
+      
+      if (imageUrl == null) {
+        throw Exception('Failed to get URL after upload');
+      }
+      
+      print('Successfully uploaded image, URL: $imageUrl');
+      
+      setState(() {
+        _isUploading = false;
+        _currentProfileImageUrl = imageUrl;
+      });
+      
+      return imageUrl;
+    } catch (e) {
+      setState(() {
+        _isUploading = false;
+        _errorMessage = 'Error uploading profile image: $e';
+      });
+      print('Upload error: $e');
+      return null;
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -62,10 +183,13 @@ class _EditProfileState extends State<EditProfile> {
         throw Exception('User not authenticated');
       }
 
-      // Get current profile
-      final profileSnapshot = await _profileService.getUserProfile(user.uid);
-      if (profileSnapshot == null) {
-        throw Exception('Profile not found');
+      // Upload profile image if a new one was selected
+      String? profileImageUrl = _currentProfileImageUrl;
+      if (_selectedImageBytes != null) {
+        profileImageUrl = await _uploadProfileImage();
+        if (profileImageUrl == null && _errorMessage == null) {
+          _errorMessage = 'Failed to upload profile image';
+        }
       }
 
       // Update profile data
@@ -75,6 +199,7 @@ class _EditProfileState extends State<EditProfile> {
         'last_name': _lastNameController.text,
         'suffix': _suffixController.text,
         'address': _addressController.text,
+        'profile_image_url': profileImageUrl,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -104,7 +229,6 @@ class _EditProfileState extends State<EditProfile> {
         automaticallyImplyLeading: false,
         elevation: 0,
         actions: [
-          // Replace the logout button with the new widget
           LogoutButton(),
         ],
       ),
@@ -171,10 +295,11 @@ class _EditProfileState extends State<EditProfile> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Profile avatar
+                      // Profile avatar with upload functionality
                       Center(
                         child: Stack(
                           children: [
+                            // Profile image container
                             Container(
                               width: 113.82,
                               height: 113.82,
@@ -188,35 +313,110 @@ class _EditProfileState extends State<EditProfile> {
                                   borderRadius: BorderRadius.circular(73),
                                 ),
                               ),
-                              child: Center(
-                                child: Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: Colors.black.withOpacity(0.5),
-                                ),
+                              // Show selected image, current image, or default icon
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(73),
+                                child: _selectedImageBytes != null
+                                  ? Image.memory(
+                                      _selectedImageBytes!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : _currentProfileImageUrl != null
+                                    ? Image.network(
+                                        _currentProfileImageUrl!,
+                                        fit: BoxFit.cover,
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          return Center(
+                                            child: CircularProgressIndicator(
+                                              value: loadingProgress.expectedTotalBytes != null
+                                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                                : null,
+                                            ),
+                                          );
+                                        },
+                                        errorBuilder: (context, error, stackTrace) {
+                                          print('Error loading profile image: $error');
+                                          return Center(
+                                            child: Icon(
+                                              Icons.person,
+                                              size: 60,
+                                              color: Colors.black.withOpacity(0.5),
+                                            ),
+                                          );
+                                        },
+                                      )
+                                    : Center(
+                                        child: Icon(
+                                          Icons.person,
+                                          size: 60,
+                                          color: Colors.black.withOpacity(0.5),
+                                        ),
+                                      ),
                               ),
                             ),
-                            // Edit icon (not functional in this version)
+                            // Edit icon that triggers image picker
                             Positioned(
                               right: 0,
                               bottom: 10,
-                              child: Container(
-                                width: 21,
-                                height: 21,
-                                decoration: const ShapeDecoration(
-                                  color: Color(0xFFD9D9D9),
-                                  shape: OvalBorder(),
-                                ),
-                                child: const Icon(
-                                  Icons.edit,
-                                  size: 14,
-                                  color: Color(0xFF545454),
+                              child: GestureDetector(
+                                onTap: _isUploading ? null : _pickImage,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: _isUploading ? Colors.grey : const Color(0xFFD9D9D9),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: _isUploading 
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.camera_alt,
+                                        size: 16,
+                                        color: Color(0xFF545454),
+                                      ),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      
+                      const SizedBox(height: 10),
+                      
+                      // Selected image filename display
+                      if (_selectedImageFile != null)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              _selectedImageFile!.name,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
                       
                       const SizedBox(height: 20),
                       

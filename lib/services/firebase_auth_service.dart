@@ -5,24 +5,19 @@ import 'package:pawsmatch/firebase_options.dart';
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Update the sign-in method with better error handling and delay
   Future<UserCredential> signInWithEmailAndPassword(String email, String password) async {
     try {
-      // First ensure Firebase is properly initialized
+
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      
-      // Add a small delay between initialization and auth operations
+
       await Future.delayed(Duration(milliseconds: 500));
       
-      // Perform the sign in
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
-      // Add another small delay before any Firestore operations happen
       await Future.delayed(Duration(milliseconds: 500));
       
       return userCredential;
@@ -60,6 +55,25 @@ class FirebaseAuthService {
     } catch (e) {
       print('Registration error: $e');
       rethrow;
+    }
+  }
+
+  Future<void> sendEmailVerification() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
+  
+  bool isEmailVerified() {
+    User? user = FirebaseAuth.instance.currentUser;
+    return user?.emailVerified ?? false;
+  }
+  
+    Future<void> reloadUser() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.reload();
     }
   }
 }

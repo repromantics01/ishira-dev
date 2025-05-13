@@ -49,18 +49,22 @@ class FirebaseOrganizationService {
   }
 
 
-  Future<List<Organization>> getUnverifiedOrgs() async {
-    try {
-      final querySnapshot = await _organizationCollectionRef
-          .where('isVerified', isEqualTo: false)
-          .where('isRejected', isEqualTo: false) // Only get non-rejected orgs
-          .get();
-      return querySnapshot.docs.map((doc) => doc.data()).toList();
-    } catch (e) {
-      print('Error getting unverified organizations: $e');
-      return [];
+Future<List<Organization>> getUnverifiedOrgs() async {
+  try {
+    final querySnapshot = await _organizationCollectionRef
+        .where('isVerified', isEqualTo: false)
+        .where('isRejected', isEqualTo: false)
+        .get();
+    print('Fetched ${querySnapshot.docs.length} unverified orgs');
+    for (var doc in querySnapshot.docs) {
+      print(doc.data());
     }
+    return querySnapshot.docs.map((doc) => doc.data()).toList();
+  } catch (e) {
+    print('Error getting unverified organizations: $e');
+    return [];
   }
+}
 
   Future<Organization?> getOrganizationById(String accountId) async {
     try {
@@ -276,7 +280,7 @@ class FirebaseOrganizationService {
   // Get all organizations
   Stream<List<Organization>> getOrganizations() {
     return _firestore
-        .collection('organizations')
+        .collection('organization')
         .snapshots()
         .map((snapshot) {
           return snapshot.docs

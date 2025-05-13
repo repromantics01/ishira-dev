@@ -17,6 +17,7 @@ class Profile {
   String bio;
   String address;
   DateTime date_created;
+  String? profile_image_url; // Field for storing profile image URL
 
   Profile({
     required this.account_id,
@@ -29,6 +30,7 @@ class Profile {
     required this.bio,
     required this.address,
     required this.date_created,
+    this.profile_image_url, // Include in constructor
   });
 
   Profile.fromJson(Map<String, dynamic> json)
@@ -41,7 +43,8 @@ class Profile {
         suffix = json['suffix'] as String,
         bio = json['bio'] as String,
         address = json['address'] as String,
-        date_created = DateTime.parse(json['date_created'] as String);
+        date_created = DateTime.parse(json['date_created'] as String),
+        profile_image_url = json['profile_image_url'] as String?; // Parse from JSON
 
   Profile copyWith({
     String? account_id,
@@ -54,6 +57,7 @@ class Profile {
     String? bio,
     String? address,
     DateTime? date_created,
+    String? profile_image_url, // Added to copyWith
   }) {
     return Profile(
       account_id: account_id ?? this.account_id,
@@ -66,6 +70,7 @@ class Profile {
       bio: bio ?? this.bio,
       address: address ?? this.address,
       date_created: date_created ?? this.date_created,
+      profile_image_url: profile_image_url ?? this.profile_image_url, // Include in new object
     );
   }
 
@@ -81,6 +86,7 @@ class Profile {
       'bio': bio,
       'address': address,
       'date_created': date_created.toIso8601String(),
+      'profile_image_url': profile_image_url, // Add to JSON
     };
   }
 }

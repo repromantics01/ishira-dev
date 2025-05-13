@@ -83,14 +83,17 @@ class _UserRegistrationFormState extends State<UserRegistrationForm> {
         );
         await _firebaseProfileService.addProfile(profile);
 
+        // Send email verification
+        await userCredential.user!.sendEmailVerification();
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User created successfully')),
+          SnackBar(content: Text('Verification email sent. Please check your inbox.')),
         );
         
         // Navigate to success dialog after successful registration
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const SuccessDialog()),
+          MaterialPageRoute(builder: (context) => const SuccessDialog(needsVerification: true)),
         );
       } on FirebaseAuthException catch (e) {
         setState(() {

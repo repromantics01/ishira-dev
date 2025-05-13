@@ -1,6 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:pawsmatch/models/signup_form_data.dart';
+import 'package:pawsmatch/pages/web/organization/sign_up.dart';
+import 'package:pawsmatch/pages/web/organization/sign_up3.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/services/firebase_organization_service.dart';
 import 'package:file_picker/file_picker.dart';
@@ -16,20 +19,14 @@ import 'package:pawsmatch/utils/firebase_helper.dart';
 import 'package:pawsmatch/pages/web/organization/success_dialog.dart';
 
 class SignUpForm2 extends StatefulWidget {
-  final String username;
-  final String email;
-  final String password;
+  final SignUpFormData formData;
 
   SignUpForm2({
-    required this.username,
-    required this.email,
-    required this.password,
+    required this.formData,
   });
 
   @override
   _SignUpForm2State createState() => _SignUpForm2State();
-
-  
 }
 
 class _SignUpForm2State extends State<SignUpForm2> {
@@ -47,6 +44,12 @@ class _SignUpForm2State extends State<SignUpForm2> {
   void initState() {
     super.initState();
     _checkFirebase();
+    
+    // Initialize with existing data
+    _orgNameController.text = widget.formData.organizationName;
+    if (widget.formData.proofOfValidationFiles.isNotEmpty) {
+      _proofOfValidationFiles = widget.formData.proofOfValidationFiles;
+    }
   }
 
   _checkFirebase() async {
@@ -86,12 +89,12 @@ class _SignUpForm2State extends State<SignUpForm2> {
 
     for (var file in _proofOfValidationFiles) {
       final fileName = DateTime.now().millisecondsSinceEpoch.toString() + '_' + file.name;
-      final path = 'uploads/$fileName';
+      final path = 'documents/$fileName';  // Consistent path format
 
       // Upload to Supabase storage
       try {
         await supabase.storage
-            .from('organization_documents')
+            .from('organizations')  // Consistent bucket name
             .upload(path, File(file.path!), fileOptions: FileOptions(cacheControl: '3600', upsert: false))
             .then((value) {
               if (mounted) {
@@ -136,78 +139,62 @@ class _SignUpForm2State extends State<SignUpForm2> {
     }
   }
 
-  Future _submitRegistration() async {
-    if (_formKey.currentState!.validate()) {
-      // Process data
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Processing Data')),
-      );
-
-      try {
-        // Ensure Firebase is initialized before using Firebase Auth
-        if (!FirebaseHelper.isInitialized) {
-          throw Exception('Firebase is not initialized');
-        }
-        
-        // Create user account
-        final userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
-          email: widget.email,
-          password: widget.password,
-        );
-
-        // Add account to database using user UID as document ID
-        Account account = Account(
-          account_id: userCredential.user!.uid,
-          account_type: AccountType.OrgAdmin,
-          account_username: widget.username,
-          account_email: widget.email,
-          account_password: widget.password,
-          date_created: DateTime.now(),
-        );
-        String uid = userCredential.user!.uid;
-        await _databaseService.addAccount(account, uid);
-
-        // Generate a new document ID for the organization
-        String orgId = _firebaseOrganizationService.generateNewOrganizationId();
-
-        // Add organization details to database
-        Organization organization = Organization(
-          org_id: orgId,
-          org_name: _orgNameController.text,
-          org_proof_of_validation: _proofOfValidationFiles.map((file) => file.name).join(', '),
-          date_created: DateTime.now(),
-          admin_ids: [uid],
-          isVerified: false,
-          isRejected: false,
-        );
-        await _firebaseOrganizationService.addOrganizationWithId(organization, orgId);
-
-        // Upload documents to Supabase storage
-        await uploadDocuments();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User created successfully')),
-        );
-        print(userCredential);
-
-        // Navigate to success dialog instead of login
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SuccessDialog(
-              email: widget.email,
-            ),
-          ),
-        );
-
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating user: $e')),
-        );
-        print('Error: $e');
-      }
-    }
+  void _navigateToNextStep() {
+    // Save all current form data
+    SignUpFormData updatedFormData = SignUpFormData(
+      username: widget.formData.username,
+      email: widget.formData.email,
+      password: widget.formData.password,
+      organizationName: _orgNameController.text,
+      proofOfValidationFiles: _proofOfValidationFiles,
+      location: widget.formData.location,
+      address: widget.formData.address,
+      about: widget.formData.about,
+      contactNumber: widget.formData.contactNumber,
+      mission: widget.formData.mission,
+      weekdayHours: widget.formData.weekdayHours,
+      weekendHours: widget.formData.weekendHours,
+      logoFile: widget.formData.logoFile,
+    );
+    
+    Navigator.push(
+      context, 
+      MaterialPageRoute(
+        builder: (context) => SignUpForm3(
+          formData: updatedFormData,
+        ),
+      ),
+    );
+  }
+  
+  // New method to navigate back with data
+  void _navigateToPreviousStep() {
+    // Save current data before going back
+    SignUpFormData updatedFormData = SignUpFormData(
+      username: widget.formData.username,
+      email: widget.formData.email,
+      password: widget.formData.password,
+      organizationName: _orgNameController.text,
+      proofOfValidationFiles: _proofOfValidationFiles,
+      location: widget.formData.location,
+      address: widget.formData.address,
+      about: widget.formData.about,
+      contactNumber: widget.formData.contactNumber,
+      mission: widget.formData.mission,
+      weekdayHours: widget.formData.weekdayHours,
+      weekendHours: widget.formData.weekendHours,
+      logoFile: widget.formData.logoFile,
+    );
+    
+    // Replace the current page with the previous page, passing updated data
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SignUpForm(
+          formData: updatedFormData,
+        ),
+      ),
+    );
   }
 
   @override
@@ -469,14 +456,60 @@ class _SignUpForm2State extends State<SignUpForm2> {
                 child: Container(
                   width: 416,
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // Back button
                       InkWell(
-                        onTap: _submitRegistration,
+                        onTap: _navigateToPreviousStep,
                         child: Container(
-                          width: 416,
+                          width: 200,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          decoration: ShapeDecoration(
+                            color: const Color(0xFFE0E0E0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                width: 1,
+                                color: const Color(0xFF8B8B8B),
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.arrow_back,
+                                size: 16,
+                                color: const Color(0xFF464646),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'BACK',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: const Color(0xFF464646),
+                                  fontSize: 16,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w400,
+                                  height: 1,
+                                  letterSpacing: 1.25,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      // Next button
+                      InkWell(
+                        onTap: () {
+                          // Allow navigation without validation to keep inputs
+                          _navigateToNextStep();
+                        },
+                        child: Container(
+                          width: 200,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                           decoration: ShapeDecoration(
                             color: const Color(0xFF212121),
@@ -489,20 +522,23 @@ class _SignUpForm2State extends State<SignUpForm2> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              SizedBox(
-                                width: 368,
-                                child: Text(
-                                  'SUBMIT',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: const Color(0xFFFEF5F0),
-                                    fontSize: 16,
-                                    fontFamily: 'DM Sans',
-                                    fontWeight: FontWeight.w400,
-                                    height: 1,
-                                    letterSpacing: 1.25,
-                                  ),
+                              Text(
+                                'NEXT',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: const Color(0xFFFEF5F0),
+                                  fontSize: 16,
+                                  fontFamily: 'DM Sans',
+                                  fontWeight: FontWeight.w400,
+                                  height: 1,
+                                  letterSpacing: 1.25,
                                 ),
+                              ),
+                              SizedBox(width: 8),
+                              Icon(
+                                Icons.arrow_forward,
+                                size: 16,
+                                color: const Color(0xFFFEF5F0),
                               ),
                             ],
                           ),

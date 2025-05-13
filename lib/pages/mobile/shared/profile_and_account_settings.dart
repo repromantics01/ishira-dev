@@ -6,6 +6,7 @@ import 'package:pawsmatch/pages/mobile/shared/edit_profile.dart';
 import 'package:pawsmatch/services/firebase_profile_service.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/widgets/logout_button.dart';
+import 'package:pawsmatch/widgets/user_profile_image.dart'; // Add this import
 
 class ProfileAndAccountSettings extends StatefulWidget {
   const ProfileAndAccountSettings({Key? key}) : super(key: key);
@@ -31,6 +32,9 @@ class _ProfileAndAccountSettingsState extends State<ProfileAndAccountSettings> {
     'suffix': '',
     'address': '',
   };
+
+  // Add field for profile image URL
+  String? _profileImageUrl;
 
   @override
   void initState() {
@@ -73,6 +77,8 @@ class _ProfileAndAccountSettingsState extends State<ProfileAndAccountSettings> {
           'address': profileSnapshot?['address'] ?? '',
           'displayName': dashboardInfo['displayName'] ?? username,
         };
+        
+        _profileImageUrl = profileSnapshot?['profile_image_url'] as String?;
 
         _userType = profileSnapshot?['user_type'] == 'Adopter'
             ? UserType.Adopter
@@ -198,26 +204,12 @@ class _ProfileAndAccountSettingsState extends State<ProfileAndAccountSettings> {
                         children: [
                           // Profile avatar that overlaps the sections
                           Center(
-                            child: Container(
-                              width: 94.82,
-                              height: 94.82,
-                              decoration: ShapeDecoration(
-                                color: const Color(0xFFF5F5F5),
-                                shape: RoundedRectangleBorder(
-                                  side: BorderSide(
-                                    width: 1,
-                                    color: Colors.black.withOpacity(0.29),
-                                  ),
-                                  borderRadius: BorderRadius.circular(73),
-                                ),
-                              ),
-                              child: Center(
-                                child: Icon(
-                                  Icons.person,
-                                  size: 50,
-                                  color: Colors.black.withOpacity(0.5),
-                                ),
-                              ),
+                            child: UserProfileImage(
+                              imageUrl: _profileImageUrl,
+                              fallbackText: _userData['displayName'],
+                              size: 100, // Larger size for the settings page
+                              showBorder: true,
+                              borderColor: Colors.grey.shade300,
                             ),
                           ),
                           // User name and email centered

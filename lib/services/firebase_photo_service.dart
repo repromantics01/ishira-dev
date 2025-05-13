@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pawsmatch/models/photo.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -46,7 +47,7 @@ class FirebasePhotoService {
   }
 
   Future<DocumentSnapshot<Photo>> getPhotoWithId(String id) {
-    print('Requesting photo document with ID: $id');
+    //print('Requesting photo document with ID: $id');
     return _photoCollectionRef.doc(id).get();
   }
 
@@ -79,7 +80,7 @@ class FirebasePhotoService {
       // Filter out null results and add valid URLs to the list
       photoUrls = results.whereType<String>().toList();
       
-      print('Retrieved ${photoUrls.length} photo URLs from ${photoIds.length} photo IDs');
+      //print('Retrieved ${photoUrls.length} photo URLs from ${photoIds.length} photo IDs');
     } catch (e) {
       print('Error getting organization photo URLs: $e');
     }
@@ -87,21 +88,212 @@ class FirebasePhotoService {
     return photoUrls;
   }
 
-  
+  // Updated Supabase bucket names
+  static const String LOGO_BUCKET = 'organization-logo';
+  static const String PETS_BUCKET = 'pets';
+  static const String DOCUMENTS_BUCKET = 'organization_documents';
+  static const String PROFILES_BUCKET = 'user-profiles'; // Added bucket for user profiles
 
-  // String getPhotoURLFromSupabase(String photo_id, dynamic supabase) {
-  //   return supabase.storage.from('pet').createPublicUrl('uploads/$photo_id');
-  // }
+  static const int SIGNED_URL_EXPIRY = 60 * 60 * 24 * 30 * 1000; // 30 days in milliseconds
 
-  // String getOrgLogoURLFromSupabase(String org_id, dynamic supabase) {
-  //   return supabase.storage.from('organization-logo').createPublicUrl('uploads/$org_id');
-  // }
+  // Completely refactored logo upload method with better error handling
+  Future<String?> uploadLogo(Uint8List imageBytes, String logoId) async {
+    try {
+      final client = Supabase.instance.client;
+      
+      // First ensure the client is properly authenticated
+      final session = client.auth.currentSession;
+      if (session == null) {
+        print('No active session, attempting anonymous upload');
+      } else {
+        print('Using authenticated session, JWT expires: ${session.expiresAt}');
+      }
+      
+      // Use a simpler path without subdirectories
+      final path = logoId;
+      
+      // Upload directly without folders
+      await client.storage
+          .from(LOGO_BUCKET)
+          .uploadBinary(
+            path,
+            imageBytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true,
+            ),
+          );
+      
+      // Generate signed URL instead of public URL for private buckets
+      final logoUrl = await client.storage
+          .from(LOGO_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+      
+      print('Generated signed logo URL: $logoUrl');
+      
+      // Store URL in Firestore for reference
+      final photoId = generateNewPhotoId();
+      await addPhotoToFirestore(logoUrl, photoId);
+      
+      return logoUrl;
+    } catch (e) {
+      print('Error during logo upload process: $e');
+      return null;
+    }
+  }
 
-  // String getOrgDocURLFromSupabase(String org_id, dynamic supabase) {
-  //   return supabase.storage.from('organization_documents').createPublicUrl('uploads/$org_id');
-  // }
+  // Updated to create signed URLs instead of public URLs
+  Future<String> getLogoUrl(String logoId) async {
+    try {
+      final path = getOrganizationLogoPath(logoId);
+      final url = await Supabase.instance.client.storage
+          .from(LOGO_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+      print('Generated signed logo URL: $url');
+      return url;
+    } catch (e) {
+      print('Error generating signed logo URL: $e');
+      return ''; // Return empty string on error
+    }
+  }
 
-  // String getOrgPhotosFromSupabase(String org_id, dynamic supabase) {
-  //   return supabase.storage.from('organization_photos').createPublicUrl('uploads/$org_id');
-  // }
+  // Add utility methods for consistent path generation
+  String getPetPhotoPath(String photoId) {
+    return 'uploads/$photoId';
+  }
+
+  String getOrganizationLogoPath(String logoId) {
+    return '$logoId';
+  }
+
+  String getOrganizationDocumentPath(String docId) {
+    return 'documents/$docId';
+  }
+
+  // Update methods to use signed URLs for private buckets
+  Future<String> getPhotoURLFromSupabase(String photoId) async {
+    try {
+      final path = getPetPhotoPath(photoId);
+      return await Supabase.instance.client.storage
+          .from(PETS_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+    } catch (e) {
+      print('Error generating signed pet photo URL: $e');
+      return ''; 
+    }
+  }
+
+  Future<String> getOrgLogoURLFromSupabase(String logoId) async {
+    try {
+      final path = getOrganizationLogoPath(logoId);
+      return await Supabase.instance.client.storage
+          .from(LOGO_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+    } catch (e) {
+      print('Error generating signed organization logo URL: $e');
+      return '';
+    }
+  }
+
+  Future<String> getOrgDocURLFromSupabase(String docId) async {
+    try {
+      final path = getOrganizationDocumentPath(docId);
+      return await Supabase.instance.client.storage
+          .from(DOCUMENTS_BUCKET)
+          .createSignedUrl(path, SIGNED_URL_EXPIRY);
+    } catch (e) {
+      print('Error generating signed organization document URL: $e');
+      return '';
+    }
+  }
+
+  Future<String> convertToSignedUrlIfNeeded(String storedUrl) async {
+    try {
+      // Check if this is already a signed URL (has 'sign' and 'token' in it)
+      if (storedUrl.contains('/sign/') && storedUrl.contains('token=')) {
+        return storedUrl; // Already a signed URL
+      }
+      
+      final uri = Uri.parse(storedUrl);
+      final pathSegments = uri.pathSegments;
+      
+      if (pathSegments.length < 5) {
+        print('Invalid stored URL format: $storedUrl');
+        return storedUrl;
+      }
+      
+      final bucketName = pathSegments[4];
+      final objectPath = pathSegments.sublist(5).join('/');
+      
+      // Generate a new signed URL
+      final signedUrl = await Supabase.instance.client.storage
+          .from(bucketName)
+          .createSignedUrl(objectPath, SIGNED_URL_EXPIRY);
+          
+      print('Converted public URL to signed URL: $signedUrl');
+      return signedUrl;
+    } catch (e) {
+      print('Error converting to signed URL: $e');
+      return storedUrl; // Return original on error
+    }
+  }
+
+  // Enhanced profile image upload method with better error handling
+  Future<String?> uploadProfileImage(Uint8List imageBytes, String userId) async {
+    if (imageBytes.isEmpty) {
+      print('Cannot upload empty image bytes');
+      return null;
+    }
+    
+    try {
+      print('Starting profile image upload for user: $userId, bytes size: ${imageBytes.length}');
+      final client = Supabase.instance.client;
+      
+      // Generate a unique photo ID for Firestore
+      String photoId = generateNewPhotoId();
+      
+      // Generate a unique filename for Supabase storage
+      final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      final filename = '${userId}_${timestamp}.jpg';
+      
+      print('Uploading to bucket: $PROFILES_BUCKET, path: $filename');
+      
+      // Upload to the user-profiles bucket
+      await client.storage
+          .from(PROFILES_BUCKET)
+          .uploadBinary(
+            filename,
+            imageBytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true,
+            ),
+          );
+      
+      print('Binary upload completed, generating signed URL');
+      
+      // Generate signed URL
+      final imageUrl = await client.storage
+          .from(PROFILES_BUCKET)
+          .createSignedUrl(filename, SIGNED_URL_EXPIRY);
+      
+      print('Generated signed profile image URL: $imageUrl');
+      
+      // Store in Firestore for reference
+      await addPhotoToFirestore(imageUrl, photoId);
+      print('Added profile image reference to Firestore with ID: $photoId');
+      
+      return imageUrl;
+    } catch (e) {
+      print('Error in uploadProfileImage: $e');
+      if (e.toString().contains('connection')) {
+        print('Network connection error - check internet connection');
+      } else if (e.toString().contains('permission') || e.toString().contains('auth')) {
+        print('Permission error - check Supabase bucket permissions');
+      } else if (e.toString().contains('storage')) {
+        print('Storage error - check Supabase storage configuration');
+      }
+      return null;
+    }
+  }
 }

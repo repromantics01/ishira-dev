@@ -8,6 +8,7 @@ import 'package:pawsmatch/pages/mobile/surrenderer/organizations_listing.dart'; 
 import 'package:pawsmatch/pages/mobile/surrenderer/surrender_history.dart'; // Add this import
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/utils/navigation_helper.dart'; 
+import 'package:pawsmatch/widgets/user_profile_image.dart'; // Add this import
 
 class SurrendererDashboard extends StatefulWidget {
   const SurrendererDashboard({super.key});
@@ -26,6 +27,7 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
   String _username = "User"; 
   String _userEmail = "";
   String _displayName = "User";
+  String? _profileImageUrl;
   
   @override
   void initState() {
@@ -48,10 +50,18 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
       Map<String, String> dashboardInfo = await _profileService.getUserDashboardInfo();
       String displayName = dashboardInfo['displayName'] ?? 'User';
       
+      // Get profile image URL
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final profileData = await _profileService.getUserProfile(user.uid);
+        _profileImageUrl = profileData?['profile_image_url'] as String?;
+      }
+      
       setState(() {
         _username = username;
         _userEmail = email;
         _displayName = displayName;
+        _profileImageUrl = _profileImageUrl;
         _isLoading = false;
       });
     } catch (e) {
@@ -139,22 +149,11 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
                       Positioned(
                         left: 33,
                         top: 20, // Adjusted to center vertically
-                        child: Container(
-                          width: 83,
-                          height: 83,
-                          decoration: ShapeDecoration(
-                            color: const Color(0xFFDDCAC0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(55),
-                            ),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.person,
-                              size: 50,
-                              color: const Color(0xFF725F63),
-                            ),
-                          ),
+                        child: UserProfileImage(
+                          imageUrl: _profileImageUrl,
+                          fallbackText: _displayName,
+                          size: 83,
+                          backgroundColor: const Color(0xFFDDCAC0),
                         ),
                       ),
                       

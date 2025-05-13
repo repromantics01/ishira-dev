@@ -685,6 +685,20 @@ class FirebaseMessagingService {
   // Getters for services
   FirebaseProfileService get profileService => _profileService;
   FirebaseOrganizationService get organizationService => _organizationService;
+  
+  // Add this method to get a single thread by ID
+  Stream<MessageThread?> getThreadById(String threadId) {
+    if (threadId.isEmpty) return Stream.value(null);
+    
+    return FirebaseFirestore.instance
+        .collection('message_threads')
+        .doc(threadId)
+        .snapshots()
+        .map((snapshot) {
+          if (!snapshot.exists) return null;
+          return MessageThread.fromJson(snapshot.data()!);
+        });
+  }
 }
 
 // Helper class to store participant data

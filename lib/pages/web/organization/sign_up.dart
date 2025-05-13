@@ -1,12 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:pawsmatch/models/account.dart';
+import 'package:pawsmatch/models/signup_form_data.dart';
 import 'package:pawsmatch/pages/web/organization/sign_up2.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 class SignUpForm extends StatefulWidget {
-  const SignUpForm({super.key});
+  final SignUpFormData? formData;
+  
+  const SignUpForm({super.key, this.formData});
 
   @override
   _SignUpFormState createState() => _SignUpFormState();
@@ -29,6 +32,14 @@ class _SignUpFormState extends State<SignUpForm> {
   void initState() {
     super.initState();
     _initializeFirebase();
+    
+    // Initialize form fields with existing data if available
+    if (widget.formData != null) {
+      _usernameController.text = widget.formData!.username;
+      _emailController.text = widget.formData!.email;
+      _passwordController.text = widget.formData!.password;
+      _confirmPasswordController.text = widget.formData!.password;
+    }
   }
 
   _initializeFirebase() async {
@@ -362,24 +373,36 @@ class _SignUpFormState extends State<SignUpForm> {
                 child: Container(
                   width: 416,
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       InkWell(
                         onTap: () async {
-                          if (_formKey.currentState!.validate()) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SignUpForm2(
-                                  username: _usernameController.text,
-                                  email: _emailController.text,
-                                  password: _passwordController.text,
-                                ),
+                          // Allow navigation to next page without validation
+                          // Save current inputs
+                          SignUpFormData formData = SignUpFormData(
+                            username: _usernameController.text,
+                            email: _emailController.text,
+                            password: _passwordController.text,
+                            organizationName: widget.formData?.organizationName ?? '',
+                            proofOfValidationFiles: widget.formData?.proofOfValidationFiles ?? [],
+                            location: widget.formData?.location,
+                            address: widget.formData?.address,
+                            about: widget.formData?.about,
+                            contactNumber: widget.formData?.contactNumber,
+                            mission: widget.formData?.mission,
+                            weekdayHours: widget.formData?.weekdayHours,
+                            weekendHours: widget.formData?.weekendHours,
+                            logoFile: widget.formData?.logoFile,
+                          );
+                          
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SignUpForm2(
+                                formData: formData,
                               ),
-                            );
-                          }
+                            ),
+                          );
                         },
                         child: Container(
                           width: 416,
@@ -397,17 +420,28 @@ class _SignUpFormState extends State<SignUpForm> {
                             children: [
                               SizedBox(
                                 width: 368,
-                                child: Text(
-                                  'NEXT',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontFamily: 'DM Sans',
-                                    fontWeight: FontWeight.w400,
-                                    height: 1,
-                                    letterSpacing: 1.25,
-                                  ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'NEXT',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontFamily: 'DM Sans',
+                                        fontWeight: FontWeight.w400,
+                                        height: 1,
+                                        letterSpacing: 1.25,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(
+                                      Icons.arrow_forward,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
