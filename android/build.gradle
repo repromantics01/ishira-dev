@@ -1,10 +1,12 @@
-buildscript {
-    // Update the Kotlin version to match
-    ext.kotlin_version = '2.0.0'
+buildscript {    // Use a Kotlin version compatible with Java 8
+    ext.kotlin_version = '1.8.20'
     
     repositories {
         google()
         mavenCentral()
+        maven {
+            url "https://storage.googleapis.com/download.flutter.io"
+        }
     }
 
     dependencies {
@@ -24,6 +26,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url "https://storage.googleapis.com/download.flutter.io"
+        }
     }
 }
 
