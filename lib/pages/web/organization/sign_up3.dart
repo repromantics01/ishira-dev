@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/models/account.dart';
 import 'package:pawsmatch/models/organization.dart';
@@ -13,6 +14,7 @@ import 'package:pawsmatch/services/firebase_organization_service.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:pawsmatch/services/supabase_client_service.dart';
 import 'package:pawsmatch/utils/firebase_helper.dart';
+import 'package:pawsmatch/widgets/web_background.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignUpForm3 extends StatefulWidget {
@@ -27,11 +29,11 @@ class SignUpForm3 extends StatefulWidget {
   _SignUpForm3State createState() => _SignUpForm3State();
 }
 
-class _SignUpForm3State extends State<SignUpForm3> {
+class _SignUpForm3State extends State<SignUpForm3> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final DatabaseAccountService _databaseService = DatabaseAccountService();
   final FirebaseOrganizationService _orgService = FirebaseOrganizationService();
-  final FirebasePhotoService _photoService = FirebasePhotoService(); // Add FirebasePhotoService
+  final FirebasePhotoService _photoService = FirebasePhotoService();
 
   // Form controllers
   final TextEditingController _locationController = TextEditingController();
@@ -48,10 +50,30 @@ class _SignUpForm3State extends State<SignUpForm3> {
   String? _errorMessage;
   PlatformFile? _logoFile;
 
+  // Animation controller
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
     _checkFirebase();
+    
+    // Initialize animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 800),
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+    
+    // Start the animation
+    _animationController.forward();
     
     // Initialize fields with data from previous steps
     _locationController.text = widget.formData.location ?? '';
@@ -69,6 +91,7 @@ class _SignUpForm3State extends State<SignUpForm3> {
   }
 
   void dispose() {
+    _animationController.dispose();
     _locationController.dispose();
     _addressController.dispose();
     _aboutController.dispose();
@@ -126,8 +149,6 @@ class _SignUpForm3State extends State<SignUpForm3> {
       // Generate a unique filename for the logo
       final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       final filename = '${timestamp}_${_logoFile!.name.replaceAll(' ', '_')}';
-      
-      //print('Starting logo upload with filename: $filename');
       
       // For web (Uint8List)
       if (_logoFile!.bytes != null) {
@@ -191,7 +212,7 @@ class _SignUpForm3State extends State<SignUpForm3> {
         // For web (Uint8List)
         if (file.bytes != null) {
           await supabase.storage
-              .from('organization_documents')  // Consistent bucket name
+              .from('organization_documents')
               .uploadBinary(path, file.bytes!, fileOptions: const FileOptions(
                 contentType: 'application/octet-stream',
                 upsert: true
@@ -203,7 +224,7 @@ class _SignUpForm3State extends State<SignUpForm3> {
           continue;
         }
         
-        // FIXED: Use createSignedUrl instead of getPublicUrl
+        // Use createSignedUrl instead of getPublicUrl
         final documentUrl = await supabase.storage
             .from('organization_documents')
             .createSignedUrl(path, FirebasePhotoService.SIGNED_URL_EXPIRY);
@@ -221,18 +242,24 @@ class _SignUpForm3State extends State<SignUpForm3> {
   }
 
   Future<void> _submitRegistration() async {
+    if (!_formKey.currentState!.validate()) {
+      // Show error toast
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please fill in all required fields'),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+    
     setState(() {
       _errorMessage = null;
       _isLoading = true;
     });
 
-    if (!_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-    
     try {
       // 1. Upload logo if provided
       String? logoUrl;
@@ -257,17 +284,16 @@ class _SignUpForm3State extends State<SignUpForm3> {
         password: widget.formData.password,
       );
       
-      // 4. Create account in Firestore - Fix Account constructor to match model
+      // 4. Create account in Firestore
       final Account account = Account(
         account_id: userCredential.user!.uid,
-        account_username: widget.formData.username, // Changed from username to account_username
-        account_email: widget.formData.email,    // Changed from email to account_email
-        account_password: widget.formData.password, // Added password field
-        account_type: AccountType.OrgAdmin, // Changed from role string to enum
-        date_created: DateTime.now(),   // Added date_created field
+        account_username: widget.formData.username,
+        account_email: widget.formData.email,
+        account_password: widget.formData.password,
+        account_type: AccountType.OrgAdmin,
+        date_created: DateTime.now(),
       );
       
-      // Fix method name to match service implementation
       await _databaseService.addAccount(account, userCredential.user!.uid);
       
       // Parse contact numbers from comma-separated string
@@ -292,14 +318,11 @@ class _SignUpForm3State extends State<SignUpForm3> {
         mission: _missionController.text.isNotEmpty ? _missionController.text : null,
         email: _emailController.text,
         contact_numbers: contactNumbers,
-        logo_url: logoUrl, // This will be the URL retrieved from Supabase
+        logo_url: logoUrl,
         weekday_hours: _weekdayHoursController.text.isNotEmpty ? _weekdayHoursController.text : null,
         weekend_hours: _weekendHoursController.text.isNotEmpty ? _weekendHoursController.text : null,
       );
       
-      //print('Creating organization with logo_url: $logoUrl');
-      
-      // Use correct method from service
       await _orgService.addOrganizationWithId(organization, userCredential.user!.uid);
       
       // 6. Show success dialog
@@ -351,337 +374,455 @@ class _SignUpForm3State extends State<SignUpForm3> {
     );
   }
 
-  Widget _buildFormField({
-    required String label, 
-    required TextEditingController controller,
-    String? hint,
-    int maxLines = 1,
-    bool required = true,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          required ? '$label*' : label,
-          style: TextStyle(
-            color: const Color(0xFF545454),
-            fontSize: 14,
-            fontFamily: 'DM Sans',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                width: 1,
-                color: const Color(0xFFC5C6CC),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                width: 1,
-                color: const Color(0xFFC5C6CC),
-              ),
-            ),
-            hintText: hint ?? 'Enter $label',
-            hintStyle: TextStyle(
-              color: Colors.grey.shade400,
-            ),
-          ),
-          validator: required ? (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter $label';
-            }
-            return null;
-          } : null,
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading && !mounted) {
       return Scaffold(
+        backgroundColor: Color(0xFFFEF5F1), // Updated background color
         body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    return Scaffold(
-      body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/photos/web-homepage.png"),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Form(
-          key: _formKey,
-          child: Stack(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Title
-              Positioned(
-                left: 151,
-                top: 90,
-                child: SizedBox(
-                  width: 448,
-                  height: 40,
-                  child: Text(
-                    'Organization Details',
-                    style: TextStyle(
-                      color: const Color(0xFF545454),
-                      fontSize: 36,
-                      fontFamily: 'DM Sans',
-                      fontWeight: FontWeight.w700,
-                      height: 0.44,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Form content in a scrollable area
-              Positioned(
-                left: 151,
-                top: 150,
-                width: 416,
-                bottom: 100,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Error message if any
-                      if (_errorMessage != null)
-                        Container(
-                          margin: EdgeInsets.only(bottom: 16),
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            _errorMessage!,
-                            style: TextStyle(color: Colors.red.shade800),
-                          ),
-                        ),
-
-                      // Logo upload section
-                      Text(
-                        'Organization Logo',
-                        style: TextStyle(
-                          color: const Color(0xFF545454),
-                          fontSize: 14,
-                          fontFamily: 'DM Sans',
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      
-                      // Logo selection area
-                      InkWell(
-                        onTap: _pickLogo,
-                        child: Container(
-                          height: 120,
-                          width: 120,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFC5C6CC)),
-                            borderRadius: BorderRadius.circular(60),
-                          ),
-                          child: _logoFile != null && _logoFile!.bytes != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(60),
-                                  child: Image.memory(
-                                    _logoFile!.bytes!,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_a_photo,
-                                      color: Colors.grey.shade400,
-                                      size: 32,
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'Add Logo',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Required information fields                      
-                      _buildFormField(
-                        label: 'Location',
-                        controller: _locationController,
-                        hint: 'Enter city and country (e.g. Manila, Philippines)',
-                      ),
-                      
-                      _buildFormField(
-                        label: 'Address',
-                        controller: _addressController,
-                        hint: 'Enter full address',
-                      ),
-
-                      _buildFormField(
-                        label: 'About Your Organization',
-                        controller: _aboutController,
-                        hint: 'Provide a description of your organization',
-                        maxLines: 4,
-                      ),
-
-                      _buildFormField(
-                        label: 'Contact Email',
-                        controller: _emailController,
-                      ),
-
-                      _buildFormField(
-                        label: 'Contact Numbers',
-                        controller: _contactNumberController,
-                        hint: 'Enter phone numbers (comma separated)',
-                      ),
-
-                      // Optional information fields
-                      _buildFormField(
-                        label: 'Mission Statement',
-                        controller: _missionController,
-                        hint: 'Your organization\'s mission (optional)',
-                        maxLines: 2,
-                        required: false,
-                      ),
-                      
-                      _buildFormField(
-                        label: 'Weekday Hours',
-                        controller: _weekdayHoursController,
-                        hint: 'e.g. 9:00 AM - 5:00 PM (optional)',
-                        required: false,
-                      ),
-                      
-                      _buildFormField(
-                        label: 'Weekend Hours',
-                        controller: _weekendHoursController,
-                        hint: 'e.g. 10:00 AM - 3:00 PM (optional)',
-                        required: false,
-                      ),
-
-                      // Submit button area with Back and Submit buttons
-                      Container(
-                        width: 416,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Back button
-                            InkWell(
-                              onTap: _isLoading ? null : _navigateToPreviousStep,
-                              child: Container(
-                                width: 180,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                decoration: ShapeDecoration(
-                                  color: _isLoading ? Colors.grey.shade300 : Color(0xFFE0E0E0),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side: BorderSide(
-                                      width: 1,
-                                      color: const Color(0xFF8B8B8B),
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.arrow_back,
-                                      size: 16,
-                                      color: const Color(0xFF464646),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'BACK',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.black87,
-                                        fontSize: 16,
-                                        fontFamily: 'DM Sans',
-                                        fontWeight: FontWeight.w400,
-                                        height: 1,
-                                        letterSpacing: 1.25,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            
-                            // Submit button
-                            InkWell(
-                              onTap: _isLoading ? null : _submitRegistration,
-                              child: Container(
-                                width: 180,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                                decoration: ShapeDecoration(
-                                  color: _isLoading ? Colors.grey : const Color(0xFF212121),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: _isLoading 
-                                  ? Center(child: CircularProgressIndicator(color: Colors.white))
-                                  : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'SUBMIT',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontFamily: 'DM Sans',
-                                            fontWeight: FontWeight.w400,
-                                            height: 1,
-                                            letterSpacing: 1.25,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Icon(
-                                          Icons.check_circle_outline,
-                                          size: 16,
-                                          color: Colors.white,
-                                        ),
-                                      ],
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      SizedBox(height: 32),
-                    ],
-                  ),
+              Image.asset('assets/images/paw_loading.gif', height: 100),
+              SizedBox(height: 20),
+              Text(
+                'Loading PawsMatch...',
+                style: GoogleFonts.dmSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF4A6572),
                 ),
               ),
             ],
           ),
         ),
+      );
+    }
+
+    // Create form content for step 3
+    Widget signUpContent = WebContentContainer(
+      child: WebCard(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Step indicator
+              Row(
+                children: [
+                  _buildStepIndicator(1, true),
+                  _buildStepConnector(true),
+                  _buildStepIndicator(2, true),
+                  _buildStepConnector(true),
+                  _buildStepIndicator(3, true),
+                ],
+              ),
+              SizedBox(height: 20),
+              
+              // Form title
+              Text(
+                'Contact Information',
+                style: GoogleFonts.nunito(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF4A6572),
+                ),
+              ),
+              Text(
+                'Add details for adopters to reach you',
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+              ),
+              SizedBox(height: 30),
+              
+              // Error message display if any
+              if (_errorMessage != null)
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16),
+                  margin: EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red.shade400),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: GoogleFonts.dmSans(
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              
+              // Logo upload section
+              Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Organization Logo',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF4A6572),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Upload your organization\'s logo',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  Spacer(),
+                  InkWell(
+                    onTap: _pickLogo,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.grey.shade300, 
+                          width: 1
+                        ),
+                      ),
+                      child: _logoFile != null && _logoFile!.bytes != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.memory(
+                                _logoFile!.bytes!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_photo_alternate_outlined,
+                                  color: Color(0xFF84A59D),
+                                  size: 32,
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Add Logo',
+                                  style: GoogleFonts.dmSans(
+                                    color: Color(0xFF84A59D),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              
+              // Form fields in two columns
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left column
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildFormField(
+                          label: 'Location',
+                          controller: _locationController,
+                          hint: 'City, Country',
+                          icon: Icons.location_on_outlined,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter location';
+                            }
+                            return null;
+                          },
+                        ),
+                        
+                        _buildFormField(
+                          label: 'Contact Numbers',
+                          controller: _contactNumberController,
+                          hint: 'Comma separated phone numbers',
+                          icon: Icons.phone_outlined,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter contact number(s)';
+                            }
+                            return null;
+                          },
+                        ),
+                        
+                        _buildFormField(
+                          label: 'Weekday Hours',
+                          controller: _weekdayHoursController,
+                          hint: 'e.g. 9:00 AM - 5:00 PM',
+                          icon: Icons.access_time,
+                          required: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  SizedBox(width: 20),
+                  
+                  // Right column
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildFormField(
+                          label: 'Address',
+                          controller: _addressController,
+                          hint: 'Full address',
+                          icon: Icons.home_outlined,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter address';
+                            }
+                            return null;
+                          },
+                        ),
+                        
+                        _buildFormField(
+                          label: 'Email',
+                          controller: _emailController,
+                          hint: 'Contact email',
+                          icon: Icons.email_outlined,
+                          enabled: false, // Email is from previous step
+                        ),
+                        
+                        _buildFormField(
+                          label: 'Weekend Hours',
+                          controller: _weekendHoursController,
+                          hint: 'e.g. 10:00 AM - 3:00 PM',
+                          icon: Icons.weekend_outlined,
+                          required: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              // About and Mission (full width)
+              _buildFormField(
+                label: 'About Your Organization',
+                controller: _aboutController,
+                hint: 'Describe your organization',
+                icon: Icons.info_outline,
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please provide information about your organization';
+                  }
+                  return null;
+                },
+              ),
+              
+              _buildFormField(
+                label: 'Mission Statement',
+                controller: _missionController,
+                hint: 'Your organization\'s mission (optional)',
+                icon: Icons.stars_outlined,
+                maxLines: 2,
+                required: false,
+              ),
+              
+              SizedBox(height: 30),
+              
+              // Navigation Buttons
+              Row(
+                mainAxisAlignment: _isLoading 
+                    ? MainAxisAlignment.center 
+                    : MainAxisAlignment.spaceBetween,
+                children: [
+                  if (!_isLoading)
+                    OutlinedButton.icon(
+                      onPressed: _navigateToPreviousStep,
+                      icon: Icon(Icons.arrow_back, color: Color(0xFF84A59D)),
+                      label: Text(
+                        'Back',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF84A59D),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Color(0xFF84A59D), width: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  
+                  // Submit button / Loading indicator
+                  _isLoading
+                    ? Container(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: 40,
+                              height: 40,
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF84A59D)),
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Creating your account...',
+                              style: GoogleFonts.dmSans(
+                                color: Color(0xFF4A6572),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: _submitRegistration,
+                        label: Text(
+                          'Submit Registration',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                        icon: Icon(Icons.check_circle, color: Colors.white),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF84A59D),
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    return WebBackground(
+      contentWidget: signUpContent,
+      subtitleText: 'Organization Sign Up',
+    );
+  }
+  
+  // Helper UI components
+  Widget _buildStepIndicator(int step, bool isActive) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: isActive ? Color(0xFF84A59D) : Colors.grey.shade200,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isActive ? Color(0xFF84A59D) : Colors.grey.shade400,
+          width: 2,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          step.toString(),
+          style: GoogleFonts.dmSans(
+            color: isActive ? Colors.white : Colors.grey.shade600,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildStepConnector(bool isActive) {
+    return Expanded(
+      child: Container(
+        height: 2,
+        color: isActive ? Color(0xFF84A59D) : Colors.grey.shade300,
+      ),
+    );
+  }
+  
+  Widget _buildFormField({
+    required String label,
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool required = true,
+    bool enabled = true,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            required ? '$label*' : label,
+            style: GoogleFonts.dmSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4A6572),
+            ),
+          ),
+          SizedBox(height: 8),
+          TextFormField(
+            controller: controller,
+            maxLines: maxLines,
+            enabled: enabled,
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.dmSans(
+                color: Colors.grey.shade400,
+              ),
+              prefixIcon: Icon(icon, color: Color(0xFF84A59D)),
+              filled: true,
+              fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.red.shade400),
+              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            validator: validator ?? (required 
+              ? (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'This field is required';
+                  }
+                  return null;
+                }
+              : null
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:pawsmatch/pages/web/web_login.dart';
+import 'package:pawsmatch/widgets/web_background.dart';
 
 class SuccessDialog extends StatelessWidget {
   final String email;
@@ -18,131 +20,218 @@ class SuccessDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/photos/success-image.png"),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Stack(
+    // Create success content
+    Widget successContent = WebContentContainer(
+      child: WebCard(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Main message
-            Positioned(
-              left: 329,
-              top: 222,
-              child: SizedBox(
-                width: 818, 
-                height: 109,
-                child: Text.rich(
-                  TextSpan(
+            // Success icon
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Color(0xFF84A59D).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.check_circle_outline_rounded,
+                size: 60,
+                color: Color(0xFF84A59D),
+              ),
+            ),
+            SizedBox(height: 20),
+            
+            // Success title
+            Text(
+              'Registration Complete!',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.nunito(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF4A6572),
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // Success message
+            Text(
+              'Please allow us 8-12 hours to review and process your registration.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 18,
+                color: Color(0xFF4A6572),
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // Email confirmation
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Color(0xFFF6BD60).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Color(0xFFF6BD60).withOpacity(0.5),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      TextSpan(
-                        text: 'DONE!\n',
-                        style: TextStyle(
-                          color: const Color(0xFF545454),
-                          fontSize: 40  ,
-                          fontFamily: 'DM Sans',
-                          fontWeight: FontWeight.w700,
-                          height: 1.17,
-                        ),
+                      Icon(
+                        Icons.email_outlined,
+                        color: Color(0xFFF6BD60),
+                        size: 24,
                       ),
-                      TextSpan(
-                        text: 'Please allow us 8-12 hours to review and process your registration.\n',
-                        style: TextStyle(
-                          color: const Color(0xFF545454),
-                          fontSize: 36,
-                          fontFamily: 'DM Sans',
-                          fontWeight: FontWeight.w700,
-                          height: 1.50,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'An email should be sent to you confirming your verification.',
-                        style: TextStyle(
-                          color: const Color(0xFF545454),
-                          fontSize: 24,
-                          fontFamily: 'Arial',
-                          fontWeight: FontWeight.w400,
-                          height: 2,
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'An email confirmation will be sent to:',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF4A6572),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            
-            // Email info
-            Positioned(
-              left: 329,
-              top: 370,
-              child: SizedBox(
-                width: 818,
-                child: Text(
-                  'We will send confirmation to: $email',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: const Color(0xFF868686),
-                    fontSize: 18,
-                    fontFamily: 'Arial',
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-            ),
-            
-            // Back to login button
-            Positioned(
-              left: 479,
-              top: 450,
-              child: Container(
-                width: 518,
-                child: InkWell(
-                  onTap: () => _navigateToLogin(context),
-                  child: Container(
-                    width: 518,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    decoration: ShapeDecoration(
-                      color: const Color(0xFF212121),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 36.0),
+                    child: Text(
+                      email,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF84A59D),
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 470,
-                          child: Text(
-                            'RETURN TO LOGIN',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: const Color(0xFFFEF5F0),
-                              fontSize: 16,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w400,
-                              height: 1,
-                              letterSpacing: 1.25,
-                            ),
-                          ),
-                        ),
-                      ],
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+            
+            // Verification steps notice
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.grey.shade200,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Next Steps',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF4A6572),
                     ),
                   ),
+                  SizedBox(height: 16),
+                  _buildStepItem(
+                    1,
+                    'The system moderator will review your documents and verify your organization.',
+                  ),
+                  SizedBox(height: 12),
+                  _buildStepItem(
+                    2,
+                    'You will receive an email notifying you of your verification status.',
+                  ),
+                  SizedBox(height: 12),
+                  _buildStepItem(
+                    3,
+                    'Once approved, you can log in to access your organization dashboard.',
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 30),
+            
+            // Return to login button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _navigateToLogin(context),
+                icon: Icon(Icons.login_rounded, color: Colors.white),
+                label: Text(
+                  'Return to Login',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF84A59D),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+
+    return WebBackground(
+      contentWidget: successContent,
+      subtitleText: 'Registration Success',
+    );
+  }
+  
+  // Helper method to build a step item
+  Widget _buildStepItem(int step, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: Color(0xFF84A59D),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              step.toString(),
+              style: GoogleFonts.dmSans(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              text,
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                color: Color(0xFF4A6572),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,6 +1,4 @@
-import 'dart:js' as js;
-
-// This file is only imported on web platforms
-void _launchUrlWeb(String url) {
-  js.context.callMethod('open', [url, '_blank']);
+Future<void> launchUrlWeb(String url) async {
+  // Not supported on this platform
+  throw UnsupportedError('Web URL launcher not available on this platform');
 }

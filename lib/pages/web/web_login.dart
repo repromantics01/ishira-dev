@@ -9,13 +9,15 @@ import 'package:pawsmatch/pages/web/organization/sign_up.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:pawsmatch/services/firebase_organization_service.dart';
 import 'package:pawsmatch/models/organization.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:pawsmatch/widgets/web_background.dart';
 
 class WebHomepage extends StatefulWidget {
   @override
   _WebHomepageState createState() => _WebHomepageState();
 }
 
-class _WebHomepageState extends State<WebHomepage> {
+class _WebHomepageState extends State<WebHomepage> with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   
@@ -23,14 +25,43 @@ class _WebHomepageState extends State<WebHomepage> {
   bool _isLoading = true;
   bool _isAuthenticating = false;
   String _errorMessage = '';
+  bool _obscurePassword = true;
 
   final DatabaseAccountService _accountService = DatabaseAccountService();
   final FirebaseOrganizationService _organizationService = FirebaseOrganizationService();
+  
+  // Animation controller for the page transition
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _initializeFirebase();
+    
+    // Initialize animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 800),
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+    
+    // Start the animation
+    _animationController.forward();
+  }
+  
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   _initializeFirebase() async {
@@ -58,35 +89,66 @@ class _WebHomepageState extends State<WebHomepage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Verification Pending'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Verification Pending',
+            style: GoogleFonts.dmSans(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF4A6572),
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.pending, size: 50, color: Colors.amber),
               SizedBox(height: 16),
-              Text('Your organization is pending verification.'),
-              Text('Please wait for approval before accessing the dashboard.'),
+              Text(
+                'Your organization is pending verification.',
+                style: GoogleFonts.dmSans(fontSize: 16),
+              ),
               SizedBox(height: 8),
               Text(
-                'You will receive an email notification when your verification is complete.',
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey[600],
-                  fontSize: 13,
+                'Please wait for approval before accessing the dashboard.',
+                style: GoogleFonts.dmSans(fontSize: 16),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                textAlign: TextAlign.center,
+                child: Text(
+                  'You will receive an email notification when your verification is complete.',
+                  style: GoogleFonts.dmSans(
+                    fontStyle: FontStyle.italic,
+                    color: Colors.amber.shade900,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ],
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                FirebaseAuth.instance.signOut(); // Sign out the user
+                FirebaseAuth.instance.signOut();
               },
-              child: Text('OK'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF84A59D),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text('OK', style: GoogleFonts.dmSans(color: Colors.white)),
             ),
           ],
+          backgroundColor: Colors.white,
+          elevation: 10,
         );
       },
     );
@@ -99,27 +161,49 @@ class _WebHomepageState extends State<WebHomepage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Verification Rejected'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Verification Rejected',
+            style: GoogleFonts.dmSans(
+              fontWeight: FontWeight.bold,
+              color: Colors.red.shade700,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.cancel, size: 50, color: Colors.red),
               SizedBox(height: 16),
-              Text('Your organization verification has been rejected.'),
-              Text('Thank you for your interest in PawsMatch.'),
-              SizedBox(height: 8),
               Text(
-                'Please check your email for detailed information about the rejection reason.',
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
+                'Your organization verification has been rejected.',
+                style: GoogleFonts.dmSans(fontSize: 16),
+              ),
+              Text(
+                'Thank you for your interest in PawsMatch.',
+                style: GoogleFonts.dmSans(fontSize: 16),
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                textAlign: TextAlign.center,
+                child: Text(
+                  'Please check your email for detailed information about the rejection reason.',
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.red.shade800,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
               SizedBox(height: 16),
               Text(
                 'You may apply again in the future with additional documentation.',
-                style: TextStyle(
+                style: GoogleFonts.dmSans(
                   color: Colors.grey[700],
                   fontSize: 13,
                 ),
@@ -128,14 +212,23 @@ class _WebHomepageState extends State<WebHomepage> {
             ],
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                FirebaseAuth.instance.signOut(); // Sign out the user
+                FirebaseAuth.instance.signOut();
               },
-              child: Text('OK'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF84A59D),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: Text('OK', style: GoogleFonts.dmSans(color: Colors.white)),
             ),
           ],
+          backgroundColor: Colors.white,
+          elevation: 10,
         );
       },
     );
@@ -283,17 +376,39 @@ class _WebHomepageState extends State<WebHomepage> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Reset Password'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          'Reset Password',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF4A6572),
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Enter your email address to receive a password reset link.'),
+            SizedBox(height: 16),
+            Text(
+              'Enter your email address to receive a password reset link.',
+              style: GoogleFonts.dmSans(),
+            ),
             SizedBox(height: 16),
             TextField(
               controller: _forgotPasswordEmailController,
               decoration: InputDecoration(
                 labelText: 'Email Address',
-                border: OutlineInputBorder(),
+                labelStyle: GoogleFonts.dmSans(color: Color(0xFF84A59D)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Color(0xFFE5E5E5)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Color(0xFF84A59D), width: 2),
+                ),
+                prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF84A59D)),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -302,7 +417,7 @@ class _WebHomepageState extends State<WebHomepage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+            child: Text('Cancel', style: GoogleFonts.dmSans(color: Colors.grey[600])),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -313,19 +428,42 @@ class _WebHomepageState extends State<WebHomepage> {
                   );
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Password reset email sent. Please check your inbox.'))
+                    SnackBar(
+                      content: Text('Password reset email sent. Please check your inbox.'),
+                      backgroundColor: Color(0xFF84A59D),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    )
                   );
                 } catch (e) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${e.toString()}'))
+                    SnackBar(
+                      content: Text('Error: ${e.toString()}'),
+                      backgroundColor: Colors.red.shade400,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    )
                   );
                 }
               }
             },
-            child: Text('Send Reset Link'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF84A59D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text('Send Reset Link', style: GoogleFonts.dmSans(color: Colors.white)),
           ),
         ],
+        backgroundColor: Colors.white,
+        elevation: 10,
       ),
     );
   }
@@ -335,7 +473,20 @@ class _WebHomepageState extends State<WebHomepage> {
     if (_isLoading) {
       return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(height: 20),
+              Text(
+                'Loading PawsMatch...',
+                style: GoogleFonts.dmSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF4A6572),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -346,11 +497,27 @@ class _WebHomepageState extends State<WebHomepage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Failed to initialize Firebase'),
+              Icon(Icons.error_outline, size: 60, color: Colors.red.shade400),
               SizedBox(height: 20),
-              ElevatedButton(
+              Text(
+                'Failed to initialize Firebase',
+                style: GoogleFonts.dmSans(
+                  fontSize: 18, 
+                  fontWeight: FontWeight.w500
+                ),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton.icon(
                 onPressed: _initializeFirebase,
-                child: Text('Retry'),
+                icon: Icon(Icons.refresh, color: Colors.white),
+                label: Text('Retry', style: GoogleFonts.dmSans(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF84A59D),
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ],
           ),
@@ -358,322 +525,238 @@ class _WebHomepageState extends State<WebHomepage> {
       );
     }
 
-    return Scaffold(
-      body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/photos/web-homepage.png"),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Stack(
+    // Create the login form content
+    Widget loginContent = WebContentContainer(
+      child: WebCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Positioned(
-              left: 151,
-              top: 266,
-              child: SizedBox(
-                width: 448,
-                height: 19,
-                child: Text(
-                  'Login',
-                  style: TextStyle(
-                    color: const Color(0xFF545454),
-                    fontSize: 36,
-                    fontFamily: 'DM Sans',
-                    fontWeight: FontWeight.w700,
-                    height: 0.44,
-                  ),
-                ),
+            // Login Header
+            Text(
+              'Welcome Back',
+              style: GoogleFonts.nunito(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF4A6572),
               ),
             ),
-            Positioned(
-              left: 151,
-              top: 332,
-              child: Container(
-                width: 416,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Username/Email',
-                      style: TextStyle(
-                        color: const Color(0xFF545454),
-                        fontSize: 14,
-                        fontFamily: 'DM Sans',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            width: 1,
-                            color: const Color(0xFFC5C6CC),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            width: 1,
-                            color: const Color(0xFFC5C6CC),
-                          ),
-                        ),
-                        hintText: 'Enter your username or email',
-                        hintStyle: TextStyle(
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+            Text(
+              'Sign in to your organization account',
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                color: Colors.grey[600],
               ),
             ),
-            Positioned(
-              left: 151,
-              top: 422,
-              child: Container(
-                width: 416,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Password',
-                      style: TextStyle(
-                        color: const Color(0xFF545454),
-                        fontSize: 14,
-                        fontFamily: 'DM Sans',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            width: 1,
-                            color: const Color(0xFFC5C6CC),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            width: 1,
-                            color: const Color(0xFFC5C6CC),
-                          ),
-                        ),
-                        hintText: 'Enter your password',
-                        hintStyle: TextStyle(
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                    ),
-                  ],
+            SizedBox(height: 30),
+            
+            // Error message if any
+            if (_errorMessage.isNotEmpty)
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-            ),
-            Positioned(
-              left: 151,
-              top: 512,
-              child: Container(
-                width: 416,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  _errorMessage,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontSize: 14,
-                    fontFamily: 'DM Sans',
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 151,
-              top: 562,
-              child: Container(
-                width: 416,
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    InkWell(
-                      onTap: _isAuthenticating ? null : _handleLogin,
-                      child: Container(
-                        width: 416,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        decoration: ShapeDecoration(
-                          color: _isAuthenticating 
-                              ? const Color(0xFF212121).withOpacity(0.7)
-                              : const Color(0xFF212121),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 368,
-                              child: _isAuthenticating
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      SizedBox(width: 12),
-                                      Text(
-                                        'SIGNING IN...',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontFamily: 'DM Sans',
-                                          fontWeight: FontWeight.w400,
-                                          height: 1,
-                                          letterSpacing: 1.25,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Text(
-                                    'LOGIN',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontFamily: 'DM Sans',
-                                      fontWeight: FontWeight.w400,
-                                      height: 1,
-                                      letterSpacing: 1.25,
-                                    ),
-                                  ),
-                            ),
-                          ],
+                    Icon(Icons.error_outline, color: Colors.red.shade400),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _errorMessage,
+                        style: GoogleFonts.dmSans(
+                          color: Colors.red.shade700,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+            if (_errorMessage.isNotEmpty) SizedBox(height: 20),
+            
+            // Email Field
+            Text(
+              'Email',
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF4A6572),
+              ),
             ),
-            Positioned(
-              left: 151,
-              top: 661,
-              child: Container(
-                width: 416,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SignUpForm(),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: 416,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        decoration: ShapeDecoration(
-                          color: const Color(0xFF212121),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 368,
-                              child: Text(
-                                'SIGN UP',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontFamily: 'DM Sans',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1,
-                                  letterSpacing: 1.25,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+            SizedBox(height: 8),
+            TextFormField(
+              controller: _emailController,
+              decoration: InputDecoration(
+                hintText: 'Enter your email',
+                hintStyle: GoogleFonts.dmSans(
+                  color: Colors.grey.shade400,
+                ),
+                prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF84A59D)),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16, 
+                  vertical: 16
                 ),
               ),
             ),
-            Positioned(
-              left: 434,
-              top: 503,
-              child: SizedBox(
-                width: 133,
-                height: 19,
-                child: InkWell(
-                  onTap: _handleForgotPassword,
-                  child: Text(
-                    'Forgot Password?',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: const Color(0xFF545454),
-                      fontSize: 12,
-                      fontFamily: 'DM Sans',
-                      fontWeight: FontWeight.w400,
-                      height: 1.33,
-                    ),
+            SizedBox(height: 24),
+            
+            // Password Field
+            Text(
+              'Password',
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF4A6572),
+              ),
+            ),
+            SizedBox(height: 8),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
+                hintText: 'Enter your password',
+                hintStyle: GoogleFonts.dmSans(
+                  color: Colors.grey.shade400,
+                ),
+                prefixIcon: Icon(Icons.lock_outline, color: Color(0xFF84A59D)),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: Color(0xFF84A59D),
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16, 
+                  vertical: 16
+                ),
+              ),
+            ),
+            
+            // Forgot Password
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _handleForgotPassword,
+                child: Text(
+                  'Forgot Password?',
+                  style: GoogleFonts.dmSans(
+                    color: Color(0xFF84A59D),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             ),
-            Positioned(
-              left: 268,
-              top: 626,
-              child: SizedBox(
-                width: 181,
-                height: 19,
+            SizedBox(height: 20),
+            
+            // Login Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isAuthenticating ? null : _handleLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF84A59D),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: _isAuthenticating
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Signing In...',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      'Log In',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+              ),
+            ),
+            
+            // Divider
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey.shade300)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'New to PawsMatch?',
+                      style: GoogleFonts.dmSans(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Colors.grey.shade300)),
+                ],
+              ),
+            ),
+            
+            // Sign Up Button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SignUpForm(),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Color(0xFF84A59D), width: 2),
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: Text(
-                  'Don\'t have an account?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: const Color(0xFF545454),
-                    fontSize: 12,
-                    fontFamily: 'DM Sans',
-                    fontWeight: FontWeight.w400,
-                    height: 1.33,
+                  'Create Organization Account',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF84A59D),
                   ),
                 ),
               ),
@@ -681,6 +764,11 @@ class _WebHomepageState extends State<WebHomepage> {
           ],
         ),
       ),
+    );
+
+    // Use the WebBackground widget
+    return WebBackground(
+      contentWidget: loginContent,
     );
   }
 }
@@ -693,10 +781,18 @@ class WebApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'PawsMatch Web',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        scaffoldBackgroundColor: const Color(0xFFFEF5F0),
+        primaryColor: Color(0xFF84A59D),
+        scaffoldBackgroundColor: Colors.white,
+        textTheme: GoogleFonts.dmSansTextTheme(),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Color(0xFF84A59D),
+          primary: Color(0xFF84A59D),
+          secondary: Color(0xFFF28482),
+          tertiary: Color(0xFFF6BD60),
+        ),
+        useMaterial3: true,
       ),
       home: WebHomepage(),
     );
