@@ -438,47 +438,32 @@ class _OrganizationsListingState extends State<OrganizationsListing> {
                                             ),
                                             SizedBox(height: 16),
                                             Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              mainAxisAlignment: MainAxisAlignment.center, // Center the button
                                               children: [
-                                                OutlinedButton(
-                                                  onPressed: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) => OrganizationProfile(
-                                                          organization: org,
+                                                Expanded(
+                                                  child: OutlinedButton(
+                                                    onPressed: () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) => OrganizationProfile(
+                                                            organization: org,
+                                                          ),
                                                         ),
+                                                      );
+                                                    },
+                                                    style: OutlinedButton.styleFrom(
+                                                      side: BorderSide(
+                                                          color: Color(0xFF725F63)),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(8),
                                                       ),
-                                                    );
-                                                  },
-                                                  style: OutlinedButton.styleFrom(
-                                                    side: BorderSide(
-                                                        color: Color(0xFF725F63)),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(8),
                                                     ),
-                                                  ),
-                                                  child: Text(
-                                                    'View Details',
-                                                    style: TextStyle(
-                                                      color: Color(0xFF725F63),
-                                                    ),
-                                                  ),
-                                                ),
-                                                ElevatedButton(
-                                                  onPressed: () {
-                                                    // TODO: Implement contacting organization
-                                                  },
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: Color(0xFF725F63),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    'Contact',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
+                                                    child: Text(
+                                                      'View Details',
+                                                      style: TextStyle(
+                                                        color: Color(0xFF725F63),
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
