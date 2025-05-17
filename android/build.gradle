@@ -1,5 +1,5 @@
 buildscript {    // Use a Kotlin version compatible with Java 8
-    ext.kotlin_version = '1.8.20'
+    ext.kotlin_version = '2.0.0'
     
     repositories {
         google()
