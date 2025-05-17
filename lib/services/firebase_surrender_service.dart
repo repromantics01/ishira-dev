@@ -129,4 +129,57 @@ class FirebaseSurrenderService {
       return [];
     }
   }
+
+  // Update surrender request status
+  Future<void> updateSurrenderStatus(String surrenderId, SurrenderStatus newStatus) async {
+    try {
+      await _firestore.collection('surrender').doc(surrenderId).update({
+        'surrender_status': newStatus.toString().split('.').last,
+      });
+      
+      // If the status is Approved, update the pet's ownership to the organization
+      if (newStatus == SurrenderStatus.Approved) {
+        final surrenderDoc = await _firestore.collection('surrender').doc(surrenderId).get();
+        final data = surrenderDoc.data();
+        
+        if (data != null && data.containsKey('pet_id') && data.containsKey('org_id')) {
+          final petId = data['pet_id'] as String;
+          final orgId = data['org_id'] as String;
+          
+          // Update the pet document to assign it to the organization
+          await _firestore.collection('pet').doc(petId).update({
+            'org_id': orgId,
+            'acquisition_type': AcquisitionType.Surrendered.toString().split('.').last,
+          });
+        }
+      }
+    } catch (e) {
+      print('Error updating surrender status: $e');
+      throw e;
+    }
+  }
+  
+  // Get all surrender requests for a specific organization
+  Stream<QuerySnapshot> getSurrenderRequestsForOrganization(String orgId) {
+    return _firestore
+        .collection('surrender')
+        .where('org_id', isEqualTo: orgId)
+        .snapshots();
+  }
+  
+  // Get pending surrender requests count for an organization
+  Future<int> getPendingSurrenderRequestsCount(String orgId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('surrender')
+          .where('org_id', isEqualTo: orgId)
+          .where('surrender_status', isEqualTo: SurrenderStatus.Pending.toString().split('.').last)
+          .get();
+          
+      return snapshot.docs.length;
+    } catch (e) {
+      print('Error getting pending surrender requests count: $e');
+      return 0;
+    }
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/models/pet.dart';
+import 'package:pawsmatch/models/surrender.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pawsmatch/models/swipe.dart';
 import 'package:pawsmatch/models/account.dart';
@@ -44,6 +45,73 @@ class FirebasePetService {
     return _petCollectionRef
         .where('surrenderer_id', isEqualTo: surrendererId)
         .snapshots();
+  }
+  
+  // Get pets by organization ID - only include pets that belong to this organization
+  Stream<QuerySnapshot<Pet>> getPetsByOrganizationId(String organizationId) {
+    return _firestore
+        .collection('pet')
+        .where('org_id', isEqualTo: organizationId)
+        .withConverter<Pet>(
+          fromFirestore: (snapshot, _) => Pet.fromJson(snapshot.data()!),
+          toFirestore: (pet, _) => pet.toJson(),
+        )
+        .snapshots();
+  }
+  
+  // Get pets by organization ID and exclude pets with pending surrender status
+  Future<List<Pet>> getPetsForManagement(String organizationId) async {
+    try {
+      print('Getting pets for management with org_id: $organizationId');
+      
+      final snapshot = await _firestore
+        .collection('pet')
+        .where('org_id', isEqualTo: organizationId)
+        .get();
+      
+      print('Found ${snapshot.docs.length} total pets with matching org_id');
+      
+      final pets = snapshot.docs.map((doc) => Pet.fromJson(doc.data())).toList();
+      
+      // Log acquisition types to debug
+      for (var pet in pets) {
+        print('Pet ${pet.pet_id} (${pet.pet_name}): Acquisition type = ${pet.acquisition_type}');
+      }
+      
+      // We still want to exclude pets with pending surrender requests
+      final surrenderSnapshot = await _firestore
+        .collection('surrender')
+        .where('org_id', isEqualTo: organizationId)
+        .where('surrender_status', isEqualTo: SurrenderStatus.Pending.toString().split('.').last)
+        .get();
+      
+      final pendingSurrenderPetIds = surrenderSnapshot.docs.map((doc) => doc.data()['pet_id'] as String).toSet();
+      print('Found ${pendingSurrenderPetIds.length} pets with pending surrender requests');
+      
+      // Filter out pets with pending surrender requests only
+      final result = pets.where((pet) => !pendingSurrenderPetIds.contains(pet.pet_id)).toList();
+      print('Returning ${result.length} pets after filtering out pending surrenders');
+      
+      return result;
+    } catch (e) {
+      print('Error getting pets for management: $e');
+      return [];
+    }
+  }
+  
+  // Update pet's organization ID when surrender is approved
+  Future<bool> updatePetOrganization(String petId, String organizationId) async {
+    try {
+      await _petCollectionRef.doc(petId).update({
+        'org_id': organizationId,
+        'pet_status': 'Available' // Optionally update pet status when moved to organization
+      });
+      print('Successfully updated pet organization to $organizationId');
+      return true;
+    } catch (e) {
+      print('Error updating pet organization: $e');
+      return false;
+    }
   }
 
   getPetWithId(String id) {

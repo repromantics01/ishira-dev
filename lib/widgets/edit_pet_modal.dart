@@ -17,12 +17,14 @@ class EditPetModal extends StatefulWidget {
   final Pet pet;
   final Function? onClose;
   final Function? onSuccess;
+  final String? organizationId; // Add this parameter
 
   const EditPetModal({
     Key? key,
     required this.pet,
     this.onClose,
     this.onSuccess,
+    this.organizationId, // Include organizationId in the constructor
   }) : super(key: key);
 
   @override
@@ -309,6 +311,10 @@ class _EditPetModalState extends State<EditPetModal> {
         if (widget.pet.pet_id.isEmpty) {
           // This is a new pet - generate a new ID
           String newPetId = _petService.generateNewPetId();
+          
+          // Debug the organization ID
+          print('Creating new rescued pet with organization ID: ${widget.organizationId}');
+          
           updatedPet = Pet(
             pet_id: newPetId,
             pet_name: _nameController.text,
@@ -322,15 +328,15 @@ class _EditPetModalState extends State<EditPetModal> {
             is_neutered_or_spayed: _isNeuteredOrSpayed,
             vaccination_status: _vaccinationStatus,
             photo_id: allPhotoIds,
-            acquisition_type:
-                AcquisitionType.Rescued, // Default for new pets added by org
+            acquisition_type: AcquisitionType.Rescued, // Default for new pets added by org
+            org_id: widget.organizationId, // Make sure this is set correctly
           );
 
           setState(() {
             _statusMessage = 'Creating new pet profile...';
           });
         } else {
-          // This is an existing pet
+          // This is an existing pet - preserve org_id if not provided
           updatedPet = widget.pet.copyWith(
             pet_name: _nameController.text,
             gender: _selectedGender,
@@ -343,6 +349,7 @@ class _EditPetModalState extends State<EditPetModal> {
             is_neutered_or_spayed: _isNeuteredOrSpayed,
             vaccination_status: _vaccinationStatus,
             photo_id: allPhotoIds,
+            // Don't override org_id for existing pets unless specifically changing it
           );
 
           setState(() {

@@ -32,11 +32,12 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
   // Sorting and filtering options
   String _sortBy = 'Name (A-Z)';
   String _filterBy = 'All';
+  String? _organizationId;
 
   @override
   void initState() {
     super.initState();
-    _loadPets();
+    _loadOrganizationId();
     // Add listener to search controller
     _searchController.addListener(() {
       setState(() {
@@ -51,33 +52,84 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
     super.dispose();
   }
 
+  Future<void> _loadOrganizationId() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        setState(() {
+          _errorMessage = 'No authenticated user found';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // First try getting the organization document directly using user's ID
+      final orgDoc = await FirebaseFirestore.instance
+          .collection('organization')
+          .doc(user.uid)
+          .get();
+
+      if (orgDoc.exists) {
+        // If the document exists, use its ID or org_id field
+        final orgData = orgDoc.data();
+        _organizationId = orgData?['org_id'] ?? user.uid;
+      } else {
+        // Try finding organization where user is listed as an admin
+        final orgSnapshot = await FirebaseFirestore.instance
+            .collection('organization')
+            .where('admin_ids', arrayContains: user.uid)
+            .limit(1)
+            .get();
+        
+        if (orgSnapshot.docs.isNotEmpty) {
+          final orgData = orgSnapshot.docs.first.data();
+          _organizationId = orgData['org_id'] as String? ?? orgSnapshot.docs.first.id;
+        } else {
+          setState(() {
+            _errorMessage = 'Could not find organization for current user';
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      // Load pets once we have the organization ID
+      _loadPets();
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to determine organization: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _loadPets() async {
+    if (_organizationId == null || _organizationId!.isEmpty) {
+      setState(() {
+        _errorMessage = 'Organization ID not found. Cannot load pets.';
+        _isLoading = false;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
     try {
-      // Get current user for organization ID
-      final user = _auth.currentUser;
-      if (user == null) {
-        throw Exception('No authenticated user found');
-      }
-
-      // Get all pets
-      final petsSnapshot = await _petService.getAllPets().first;
-      final List<Pet> allPets = petsSnapshot.docs.map((doc) => doc.data()).toList();
-
-      // For demo, we'll show all pets. In a real app, you might filter by organization ID
+      // Use the modified getPetsForManagement method that filters only by org_id
+      final pets = await _petService.getPetsForManagement(_organizationId!);
+      
       setState(() {
-        _pets = allPets;
+        _pets = pets;
       });
 
       // Fetch main photo URL for each pet
       for (var pet in _pets) {
         if (pet.photo_id.isNotEmpty) {
           try {
-            final photoUrl = await _photoService.getPhotoUrl(pet.photo_id.first);
+            final photoUrl = await _photoService.getPhotoUrl(pet.photo_id[0]);
             if (photoUrl != null) {
               setState(() {
                 _petMainPhotoUrls[pet.pet_id] = photoUrl;
@@ -127,6 +179,12 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
   List<Pet> _getFilteredPets() {
     List<Pet> sortedPets = _getSortedPets();
     
+    // Debug all pets before filtering
+    print('Total pets before filtering: ${sortedPets.length}');
+    for (var pet in sortedPets) {
+      print('Pet: ${pet.pet_name}, Status: ${pet.pet_status}, Acquisition: ${pet.acquisition_type}');
+    }
+    
     // First filter by search term if not empty
     if (_searchTerm.isNotEmpty) {
       sortedPets = sortedPets.where((pet) => 
@@ -138,20 +196,29 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
       return sortedPets;
     }
     
+    // Debug filter selection
+    print('Applying filter: $_filterBy');
+    
     // Filter by status
+    List<Pet> filteredPets;
     if (_filterBy == 'Available') {
-      return sortedPets.where((pet) => pet.pet_status == PetStatus.Available).toList();
+      filteredPets = sortedPets.where((pet) => pet.pet_status == PetStatus.Available).toList();
     } else if (_filterBy == 'Adopted') {
-      return sortedPets.where((pet) => pet.pet_status == PetStatus.Adopted).toList();
+      filteredPets = sortedPets.where((pet) => pet.pet_status == PetStatus.Adopted).toList();
     } else if (_filterBy == 'Pending') {
-      return sortedPets.where((pet) => pet.pet_status == PetStatus.Pending).toList();
+      filteredPets = sortedPets.where((pet) => pet.pet_status == PetStatus.Pending).toList();
     } else if (_filterBy == 'Rescued') {
-      return sortedPets.where((pet) => pet.acquisition_type == AcquisitionType.Rescued).toList();
+      filteredPets = sortedPets.where((pet) => pet.acquisition_type == AcquisitionType.Rescued).toList();
     } else if (_filterBy == 'Surrendered') {
-      return sortedPets.where((pet) => pet.acquisition_type == AcquisitionType.Surrendered).toList();
+      filteredPets = sortedPets.where((pet) => pet.acquisition_type == AcquisitionType.Surrendered).toList();
+    } else {
+      filteredPets = sortedPets;
     }
     
-    return sortedPets;
+    // Debug after filtering
+    print('Found ${filteredPets.length} pets after applying filter $_filterBy');
+    
+    return filteredPets;
   }
 
   // Calculate pet age in years from birthdate

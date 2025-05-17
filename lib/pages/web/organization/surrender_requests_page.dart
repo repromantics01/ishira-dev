@@ -33,6 +33,7 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
   Map<String, Account> _userAccounts = {};
   Map<String, Map<String, dynamic>> _userProfiles = {};
   Map<String, Pet> _pets = {};
+  String _organizationId = ''; // Store organization ID at class level
   
   String _sortBy = 'Date';
   String _filterBy = 'All';
@@ -89,6 +90,9 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
           return;
         }
       }
+      
+      // Store organization ID at class level for use in other methods
+      _organizationId = orgId;
 
       // Get surrender requests for this organization
       List<Surrender> surrenders = await _surrenderService.getSurrendersByOrganizationId(orgId);
@@ -174,8 +178,59 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
     return pet?.pet_name ?? 'Pet ID: $petId';
   }
 
+  // Update function to approve a surrender request
+  Future<void> _approveSurrenderRequest(String surrenderId) async {
+    try {
+      // Get the surrender request to access pet_id
+      final surrender = _surrenderRequests.firstWhere(
+        (s) => s.surrender_id == surrenderId,
+        orElse: () => throw Exception('Surrender request not found'),
+      );
+      
+      // Update surrender status
+      await _surrenderService.updateSurrenderStatus(surrenderId, SurrenderStatus.Approved);
+      
+      // Update pet's organization ID
+      if (_organizationId.isNotEmpty) {
+        await _petService.updatePetOrganization(surrender.pet_id, _organizationId);
+        print('Updated pet ${surrender.pet_id} organization to $_organizationId');
+      } else {
+        print('Warning: Organization ID not found, pet organization not updated');
+      }
+      
+      // Reload data to reflect changes
+      _loadSurrenderRequests();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Surrender request approved successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to approve request: $e')),
+      );
+    }
+  }
+  
+  // Add function to reject a surrender request
+  Future<void> _rejectSurrenderRequest(String surrenderId) async {
+    try {
+      await _surrenderService.updateSurrenderStatus(surrenderId, SurrenderStatus.Rejected);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Surrender request rejected')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to reject request: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Get screen size for responsive layout
+    final Size screenSize = MediaQuery.of(context).size;
+    final bool isMobile = screenSize.width < 1200;
+    
     // Create a filtered list based on the filter selection
     List<Surrender> filteredRequests = [];
     if (_surrenderRequests.isNotEmpty) {
@@ -187,579 +242,620 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFEF5F0),
-      body: Center(
-        child: Container(
-          width: 1584,
-          height: 1024,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(color: const Color(0xFFFEF5F0)),
-          child: Stack(
-            children: [
-              // Top horizontal line
-              Positioned(
-                left: 16,
-                top: 1,
-                child: Container(
-                  width: 503,
-                  height: 0.50,
-                  decoration: BoxDecoration(color: const Color(0xFF9E9E9E)),
+      body: Row(
+        children: [
+          // Sidebar
+          const OrgSidebar(),
+          
+          // Main content area
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 16.0 : 40.0,
+                  vertical: 24.0,
                 ),
-              ),
-              
-              // Page title - adjust positioning for consistent margin
-              Positioned(
-                left: 400,
-                top: 100,
-                child: SizedBox(
-                  width: 646,
-                  height: 50,
-                  child: Text(
-                    'Surrender Requests',
-                    style: TextStyle(
-                      color: const Color(0xFF545454),
-                      fontSize: 48,
-                      fontFamily: 'DM Sans',
-                      fontWeight: FontWeight.w700,
-                      height: 0.33,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 40),
+                    
+                    // Page title
+                    Text(
+                      'Surrender Requests',
+                      style: TextStyle(
+                        color: const Color(0xFF545454),
+                        fontSize: isMobile ? 32 : 48,
+                        fontFamily: 'DM Sans',
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              
-              // Apply consistent margins for sort and filter controls
-              Positioned(
-                left: 400,
-                top: 170,
-                child: Container(
-                  width: 175,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 175,
-                        child: Text(
-                          'Sort',
-                          style: TextStyle(
-                            color: const Color(0xFF2E3036),
-                            fontSize: 12,
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        width: double.infinity,
-                        height: 48,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        clipBehavior: Clip.antiAlias,
-                        decoration: ShapeDecoration(
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(
-                              width: 1,
-                              color: const Color(0xFFC5C6CC),
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          underline: SizedBox(),
-                          value: _sortBy,
-                          items: ['Date', 'Status', 'User', 'Pet'].map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(
-                                value,
-                                style: TextStyle(
-                                  color: const Color(0xFF8F9098),
-                                  fontSize: 14,
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.43,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (newValue) {
-                            setState(() {
-                              _sortBy = newValue!;
-                            });
-                          },
-                          icon: Container(
-                            width: 12,
-                            height: 12,
-                            child: Icon(
-                              Icons.arrow_drop_down,
-                              color: const Color(0xFF8F9098),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Filter dropdown - consistent left margin with sort
-              Positioned(
-                left: 590,
-                top: 170,
-                child: Container(
-                  width: 171,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 171,
-                        child: Text(
-                          'Filter',
-                          style: TextStyle(
-                            color: const Color(0xFF2E3036),
-                            fontSize: 12,
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        width: double.infinity,
-                        height: 48,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        clipBehavior: Clip.antiAlias,
-                        decoration: ShapeDecoration(
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(
-                              width: 1,
-                              color: const Color(0xFFC5C6CC),
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          underline: SizedBox(),
-                          value: _filterBy,
-                          items: ['All', 'Pending', 'Approved', 'Rejected', 'Completed', 'Cancelled'].map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(
-                                value,
-                                style: TextStyle(
-                                  color: const Color(0xFF8F9098),
-                                  fontSize: 14,
-                                  fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.43,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (newValue) {
-                            setState(() {
-                              _filterBy = newValue!;
-                            });
-                          },
-                          icon: Container(
-                            width: 12,
-                            height: 12,
-                            child: Icon(
-                              Icons.arrow_drop_down,
-                              color: const Color(0xFF8F9098),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              // Apply consistent margins to table background
-              Positioned(
-                left: 400,
-                top: 280,
-                child: Container(
-                  width: 1115,
-                  height: 576,
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFFEDEDED),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Table header with consistent margins
-              Positioned(
-                left: 400,
-                top: 260,
-                child: Container(
-                  width: 1115,
-                  height: 65,
-                  decoration: ShapeDecoration(
-                    color: const Color(0xFFB0CCCA),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Row(
+                    
+                    SizedBox(height: 40),
+                    
+                    // Controls row (Sort and Filter)
+                    Wrap(
+                      spacing: 20,
+                      runSpacing: 20,
                       children: [
-                        // User column
-                        Expanded(
-                          flex: 20,
-                          child: Text(
-                            'User',
-                            style: TextStyle(
-                              color: const Color(0xFF3B3B3B),
-                              fontSize: 24,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        // Pet column 
-                        Expanded(
-                          flex: 20,
-                          child: Text(
-                            'Pet',
-                            style: TextStyle(
-                              color: const Color(0xFF3B3B3B),
-                              fontSize: 24,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        // Date column
-                        Expanded(
-                          flex: 20,
-                          child: Text(
-                            'Date',
-                            style: TextStyle(
-                              color: const Color(0xFF3B3B3B),
-                              fontSize: 24,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        // Status column
-                        Expanded(
-                          flex: 15,
-                          child: Text(
-                            'Status',
-                            style: TextStyle(
-                              color: const Color(0xFF3B3B3B),
-                              fontSize: 24,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        // Action column
-                        Expanded(
-                          flex: 25,
-                          child: Text(
-                            'Action',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: const Color(0xFF3B3B3B),
-                              fontSize: 24,
-                              fontFamily: 'DM Sans',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Table content with consistent margins
-              Positioned(
-                left: 400,
-                top: 325,
-                child: Container(
-                  width: 1115,
-                  height: 531, // Adjusted to fit inside background properly
-                  child: _isLoading
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(color: Color(0xFF725F63)),
-                            SizedBox(height: 20),
-                            Text(
-                              'Loading surrender requests...',
-                              style: TextStyle(
-                                color: Color(0xFF545454),
-                                fontSize: 16,
-                                fontFamily: 'DM Sans',
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _error.isNotEmpty
-                      ? Center(
+                        // Sort dropdown
+                        SizedBox(
+                          width: 175,
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.error_outline, color: Colors.red, size: 48),
-                              SizedBox(height: 16),
                               Text(
-                                'Error',
+                                'Sort',
                                 style: TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 20,
-                                  fontFamily: 'DM Sans',
-                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF2E3036),
+                                  fontSize: 12,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                               SizedBox(height: 8),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 40),
-                                child: Text(
-                                  _error,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.red.shade700,
-                                    fontSize: 16,
-                                    fontFamily: 'DM Sans',
-                                  ),
-                                ),
-                              ),
-                              SizedBox(height: 24),
-                              ElevatedButton(
-                                onPressed: _loadSurrenderRequests,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFFB0CCCA),
-                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              Container(
+                                height: 48,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: ShapeDecoration(
                                   shape: RoundedRectangleBorder(
+                                    side: BorderSide(
+                                      width: 1,
+                                      color: const Color(0xFFC5C6CC),
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: Text(
-                                  'Try Again',
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.bold,
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    isExpanded: true,
+                                    value: _sortBy,
+                                    items: ['Date', 'Status', 'User', 'Pet'].map((String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(
+                                          value,
+                                          style: TextStyle(
+                                            color: const Color(0xFF8F9098),
+                                            fontSize: 14,
+                                            fontFamily: 'Inter',
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (newValue) {
+                                      setState(() {
+                                        _sortBy = newValue!;
+                                      });
+                                    },
+                                    icon: Icon(
+                                      Icons.arrow_drop_down,
+                                      color: const Color(0xFF8F9098),
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      : _surrenderRequests.isEmpty
-                        ? _buildEmptyState(
-                            'No surrender requests found',
-                            'There are currently no surrender requests for your organization.',
-                            Icons.pets,
-                          )
-                        : filteredRequests.isEmpty
-                          ? _buildEmptyState(
-                              'No ${_filterBy} requests found',
-                              'Try changing your filter to see other surrender requests.',
-                              Icons.filter_alt,
-                            )
-                          : ListView.builder(
-                              padding: EdgeInsets.zero,
-                              itemCount: filteredRequests.length,
-                              itemBuilder: (context, index) {
-                                final surrender = filteredRequests[index];
-                                
-                                return Column(
-                                  children: [
-                                    Container(
-                                      height: 60,
-                                      padding: const EdgeInsets.symmetric(horizontal: 40),
-                                      child: Row(
-                                        children: [
-                                          // User column
-                                          Expanded(
-                                            flex: 20,
-                                            child: Text(
-                                              _getUserFullName(surrender.account_id),
-                                              style: TextStyle(
-                                                color: const Color(0xFF3D3D3D),
-                                                fontSize: 16,
-                                                fontFamily: 'Inter',
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                            ),
+                        ),
+                        
+                        // Filter dropdown
+                        SizedBox(
+                          width: 175,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Filter',
+                                style: TextStyle(
+                                  color: const Color(0xFF2E3036),
+                                  fontSize: 12,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Container(
+                                height: 48,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: ShapeDecoration(
+                                  shape: RoundedRectangleBorder(
+                                    side: BorderSide(
+                                      width: 1,
+                                      color: const Color(0xFFC5C6CC),
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    isExpanded: true,
+                                    value: _filterBy,
+                                    items: ['All', 'Pending', 'Approved', 'Rejected', 'Completed', 'Cancelled'].map((String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(
+                                          value,
+                                          style: TextStyle(
+                                            color: const Color(0xFF8F9098),
+                                            fontSize: 14,
+                                            fontFamily: 'Inter',
+                                            fontWeight: FontWeight.w400,
                                           ),
-                                          // Pet column
-                                          Expanded(
-                                            flex: 20,
-                                            child: Text(
-                                              _getPetName(surrender.pet_id),
-                                              style: TextStyle(
-                                                color: const Color(0xFF3D3D3D),
-                                                fontSize: 16,
-                                                fontFamily: 'Inter',
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                            ),
-                                          ),
-                                          // Date column
-                                          Expanded(
-                                            flex: 20,
-                                            child: Text(
-                                              _formatDate(surrender.date_surrendered),
-                                              style: TextStyle(
-                                                color: const Color(0xFF3D3D3D),
-                                                fontSize: 16,
-                                                fontFamily: 'Inter',
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                            ),
-                                          ),
-                                          // Status column
-                                          Expanded(
-                                            flex: 15,
-                                            child: Text(
-                                              surrender.surrender_status.toString().split('.').last,
-                                              style: TextStyle(
-                                                color: const Color(0xFF3D3D3D),
-                                                fontSize: 16,
-                                                fontFamily: 'Inter',
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                            ),
-                                          ),
-                                          // Action column
-                                          Expanded(
-                                            flex: 25,
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                // View button
-                                                InkWell(
-                                                  onTap: () {
-                                                    _showDetailsModal(context, surrender);
-                                                  },
-                                                  child: Container(
-                                                    height: 40,
-                                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                                    decoration: ShapeDecoration(
-                                                      shape: RoundedRectangleBorder(
-                                                        side: BorderSide(
-                                                          width: 1.50,
-                                                          color: const Color(0xFF545454),
-                                                        ),
-                                                        borderRadius: BorderRadius.circular(12),
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      'View Details',
-                                                      style: TextStyle(
-                                                        color: const Color(0xFF545454),
-                                                        fontSize: 12,
-                                                        fontFamily: 'Inter',
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: 8),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (newValue) {
+                                      setState(() {
+                                        _filterBy = newValue!;
+                                      });
+                                    },
+                                    icon: Icon(
+                                      Icons.arrow_drop_down,
+                                      color: const Color(0xFF8F9098),
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 40),
+                    
+                    // Table container with responsive width
+                    Container(
+                      width: double.infinity,
+                      decoration: ShapeDecoration(
+                        color: const Color(0xFFEDEDED),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          // Table header
+                          Container(
+                            width: double.infinity,
+                            height: 65,
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFB0CCCA),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Row(
+                                children: [
+                                  // User column
+                                  Expanded(
+                                    flex: 20,
+                                    child: Text(
+                                      'User',
+                                      style: TextStyle(
+                                        color: const Color(0xFF3B3B3B),
+                                        fontSize: isMobile ? 18 : 24,
+                                        fontFamily: 'DM Sans',
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    Container(
-                                      width: 1040,
-                                      height: 1,
-                                      decoration: BoxDecoration(color: const Color(0xFF9E9E9E)),
+                                  ),
+                                  // Pet column 
+                                  Expanded(
+                                    flex: 20,
+                                    child: Text(
+                                      'Pet',
+                                      style: TextStyle(
+                                        color: const Color(0xFF3B3B3B),
+                                        fontSize: isMobile ? 18 : 24,
+                                        fontFamily: 'DM Sans',
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
-                                  ],
-                                );
-                              },
+                                  ),
+                                  // Date column (hidden on mobile)
+                                  if (!isMobile)
+                                    Expanded(
+                                      flex: 20,
+                                      child: Text(
+                                        'Date',
+                                        style: TextStyle(
+                                          color: const Color(0xFF3B3B3B),
+                                          fontSize: 24,
+                                          fontFamily: 'DM Sans',
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  // Status column
+                                  Expanded(
+                                    flex: 15,
+                                    child: Text(
+                                      'Status',
+                                      style: TextStyle(
+                                        color: const Color(0xFF3B3B3B),
+                                        fontSize: isMobile ? 18 : 24,
+                                        fontFamily: 'DM Sans',
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  // Action column
+                                  Expanded(
+                                    flex: isMobile ? 15 : 25,
+                                    child: Text(
+                                      'Action',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: const Color(0xFF3B3B3B),
+                                        fontSize: isMobile ? 18 : 24,
+                                        fontFamily: 'DM Sans',
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                          ),
+                          
+                          // Table content
+                          Container(
+                            width: double.infinity,
+                            constraints: BoxConstraints(
+                              minHeight: 400,
+                              maxHeight: 600,
+                            ),
+                            child: _isLoading
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(color: Color(0xFF725F63)),
+                                      SizedBox(height: 20),
+                                      Text(
+                                        'Loading surrender requests...',
+                                        style: TextStyle(
+                                          color: Color(0xFF545454),
+                                          fontSize: 16,
+                                          fontFamily: 'DM Sans',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _error.isNotEmpty
+                                ? Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.error_outline, color: Colors.red, size: 48),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'Error',
+                                          style: TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 20,
+                                            fontFamily: 'DM Sans',
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 40),
+                                          child: Text(
+                                            _error,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.red.shade700,
+                                              fontSize: 16,
+                                              fontFamily: 'DM Sans',
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(height: 24),
+                                        ElevatedButton(
+                                          onPressed: _loadSurrenderRequests,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Color(0xFFB0CCCA),
+                                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Try Again',
+                                            style: TextStyle(
+                                              color: Colors.black87,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : _surrenderRequests.isEmpty
+                                  ? _buildEmptyState(
+                                      'No surrender requests found',
+                                      'There are currently no surrender requests for your organization.',
+                                      Icons.pets,
+                                    )
+                                  : filteredRequests.isEmpty
+                                    ? _buildEmptyState(
+                                        'No ${_filterBy} requests found',
+                                        'Try changing your filter to see other surrender requests.',
+                                        Icons.filter_alt,
+                                      )
+                                    : ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        itemCount: filteredRequests.length,
+                                        itemBuilder: (context, index) {
+                                          final surrender = filteredRequests[index];
+                                          
+                                          return Column(
+                                            children: [
+                                              Container(
+                                                height: isMobile ? 80 : 60,
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: isMobile ? 10 : 20,
+                                                  vertical: isMobile ? 5 : 0,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    // User column
+                                                    Expanded(
+                                                      flex: 20,
+                                                      child: Text(
+                                                        _getUserFullName(surrender.account_id),
+                                                        style: TextStyle(
+                                                          color: const Color(0xFF3D3D3D),
+                                                          fontSize: 16,
+                                                          fontFamily: 'Inter',
+                                                          fontWeight: FontWeight.w400,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    // Pet column
+                                                    Expanded(
+                                                      flex: 20,
+                                                      child: Text(
+                                                        _getPetName(surrender.pet_id),
+                                                        style: TextStyle(
+                                                          color: const Color(0xFF3D3D3D),
+                                                          fontSize: 16,
+                                                          fontFamily: 'Inter',
+                                                          fontWeight: FontWeight.w400,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    // Date column (hidden on mobile)
+                                                    if (!isMobile)
+                                                      Expanded(
+                                                        flex: 20,
+                                                        child: Text(
+                                                          _formatDate(surrender.date_surrendered),
+                                                          style: TextStyle(
+                                                            color: const Color(0xFF3D3D3D),
+                                                            fontSize: 16,
+                                                            fontFamily: 'Inter',
+                                                            fontWeight: FontWeight.w400,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    // Status column
+                                                    Expanded(
+                                                      flex: 15,
+                                                      child: Text(
+                                                        surrender.surrender_status.toString().split('.').last,
+                                                        style: TextStyle(
+                                                          color: const Color(0xFF3D3D3D),
+                                                          fontSize: 16,
+                                                          fontFamily: 'Inter',
+                                                          fontWeight: FontWeight.w400,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    // Action column
+                                                    Expanded(
+                                                      flex: isMobile ? 15 : 25,
+                                                      child: Row(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          // View button
+                                                          InkWell(
+                                                            onTap: () {
+                                                              _showDetailsModal(context, surrender);
+                                                            },
+                                                            child: Container(
+                                                              height: 40,
+                                                              padding: EdgeInsets.symmetric(
+                                                                horizontal: isMobile ? 8 : 16, 
+                                                                vertical: 12
+                                                              ),
+                                                              decoration: ShapeDecoration(
+                                                                shape: RoundedRectangleBorder(
+                                                                  side: BorderSide(
+                                                                    width: 1.50,
+                                                                    color: const Color(0xFF545454),
+                                                                  ),
+                                                                  borderRadius: BorderRadius.circular(12),
+                                                                ),
+                                                              ),
+                                                              child: Text(
+                                                                isMobile ? 'View' : 'View Details',
+                                                                style: TextStyle(
+                                                                  color: const Color(0xFF545454),
+                                                                  fontSize: 12,
+                                                                  fontFamily: 'Inter',
+                                                                  fontWeight: FontWeight.w600,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          if (!isMobile && surrender.surrender_status == SurrenderStatus.Pending) ...[
+                                                            SizedBox(width: 8),
+                                                            // Approve button
+                                                            InkWell(
+                                                              onTap: () {
+                                                                _approveSurrenderRequest(surrender.surrender_id);
+                                                              },
+                                                              child: Container(
+                                                                height: 40,
+                                                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                                decoration: ShapeDecoration(
+                                                                  shape: RoundedRectangleBorder(
+                                                                    side: BorderSide(
+                                                                      width: 1.50,
+                                                                      color: Colors.green,
+                                                                    ),
+                                                                    borderRadius: BorderRadius.circular(12),
+                                                                  ),
+                                                                ),
+                                                                child: Text(
+                                                                  'Approve',
+                                                                  style: TextStyle(
+                                                                    color: Colors.green,
+                                                                    fontSize: 12,
+                                                                    fontFamily: 'Inter',
+                                                                    fontWeight: FontWeight.w600,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            SizedBox(width: 8),
+                                                            // Reject button
+                                                            InkWell(
+                                                              onTap: () {
+                                                                _rejectSurrenderRequest(surrender.surrender_id);
+                                                              },
+                                                              child: Container(
+                                                                height: 40,
+                                                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                                                decoration: ShapeDecoration(
+                                                                  shape: RoundedRectangleBorder(
+                                                                    side: BorderSide(
+                                                                      width: 1.50,
+                                                                      color: Colors.red,
+                                                                    ),
+                                                                    borderRadius: BorderRadius.circular(12),
+                                                                  ),
+                                                                ),
+                                                                child: Text(
+                                                                  'Reject',
+                                                                  style: TextStyle(
+                                                                    color: Colors.red,
+                                                                    fontSize: 12,
+                                                                    fontFamily: 'Inter',
+                                                                    fontWeight: FontWeight.w600,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Divider(
+                                                height: 1,
+                                                thickness: 1,
+                                                color: Color(0xFF9E9E9E),
+                                                indent: 20,
+                                                endIndent: 20,
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 40),
+                  ],
                 ),
               ),
-              
-              // Sidebar (unchanged)
-              const Positioned(
-                left: 0,
-                top: 0,
-                child: OrgSidebar(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper method for empty states
-  Widget _buildEmptyState(String title, String subtitle, IconData icon) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Color(0xFF725F63), size: 64),
-          SizedBox(height: 24),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 24,
-              fontFamily: 'DM Sans',
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF545454),
             ),
           ),
-          SizedBox(height: 16),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              fontFamily: 'DM Sans',
-              color: Color(0xFF545454).withOpacity(0.7),
-            ),
-          ),
-          if (_filterBy != 'All') ...[
-            SizedBox(height: 32),
-            OutlinedButton(
-              onPressed: () {
-                setState(() {
-                  _filterBy = 'All';
-                });
-              },
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: Color(0xFF725F63)),
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                'Show All Requests',
-                style: TextStyle(
-                  color: Color(0xFF725F63),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
+  // Helper method for empty states - modified to be responsive
+  Widget _buildEmptyState(String title, String subtitle, IconData icon) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Color(0xFF725F63), size: 64),
+            SizedBox(height: 24),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24,
+                fontFamily: 'DM Sans',
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF545454),
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontFamily: 'DM Sans',
+                color: Color(0xFF545454).withOpacity(0.7),
+              ),
+            ),
+            if (_filterBy != 'All') ...[
+              SizedBox(height: 32),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    _filterBy = 'All';
+                  });
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Color(0xFF725F63)),
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Show All Requests',
+                  style: TextStyle(
+                    color: Color(0xFF725F63),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Modified to improve pet photo display
   void _showDetailsModal(BuildContext context, Surrender surrender) {
     final pet = _pets[surrender.pet_id];
     final account = _userAccounts[surrender.account_id];
@@ -778,7 +874,8 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
             // Refresh the data when modal is closed
             _loadSurrenderRequests();
           },
-          // No need for onApprove/onReject - the RequestDetailsModal now handles this internally
+          // Pass organization ID for photo display
+          organizationId: _organizationId,
         );
       },
     );

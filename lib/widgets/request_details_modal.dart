@@ -17,6 +17,7 @@ class RequestDetailsModal extends StatefulWidget {
   final Function()? onReject;
   final Function()? onMessage;
   final Function()? onComplete; // New callback for completing adoptions
+  final String? organizationId; // Add this parameter for pet photos
 
   const RequestDetailsModal({
     Key? key,
@@ -29,6 +30,7 @@ class RequestDetailsModal extends StatefulWidget {
     this.onReject,
     this.onMessage,
     this.onComplete, // Add this parameter
+    this.organizationId,
   }) : super(key: key);
 
   @override

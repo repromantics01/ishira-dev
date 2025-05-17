@@ -33,6 +33,7 @@ class Pet {
   String species;
   bool is_neutered_or_spayed;
   VaccinationStatus vaccination_status;
+  String? org_id; // Added organization ID field
 
   Pet({
     required this.pet_id,
@@ -48,6 +49,7 @@ class Pet {
     required this.species,
     required this.is_neutered_or_spayed,
     required this.vaccination_status,
+    this.org_id, // Added to constructor
   });
 
   Pet.fromJson(Map<String, dynamic> json)
@@ -66,7 +68,8 @@ class Pet {
         species = json['species'] as String,
         is_neutered_or_spayed = json['is_neutered_or_spayed'] as bool,
         vaccination_status = VaccinationStatus.values.firstWhere((e) =>
-            e.toString() == 'VaccinationStatus.' + json['vaccination_status']);
+            e.toString() == 'VaccinationStatus.' + json['vaccination_status']),
+        org_id = json['org_id'] as String?; // Added parsing from JSON
 
   Pet copyWith({
     String? pet_id,
@@ -82,6 +85,7 @@ class Pet {
     String? species,
     bool? is_neutered_or_spayed,
     VaccinationStatus? vaccination_status,
+    String? org_id, // Added to copyWith
   }) {
     return Pet(
       pet_id: pet_id ?? this.pet_id,
@@ -97,6 +101,7 @@ class Pet {
       species: species ?? this.species,
       is_neutered_or_spayed: is_neutered_or_spayed ?? this.is_neutered_or_spayed,
       vaccination_status: vaccination_status ?? this.vaccination_status,
+      org_id: org_id ?? this.org_id, // Added to new object
     );
   }
 
@@ -115,6 +120,7 @@ class Pet {
       'species': species,
       'is_neutered_or_spayed': is_neutered_or_spayed,
       'vaccination_status': vaccination_status.toString().split('.').last,
+      'org_id': org_id, // Include in JSON
     };
   }
 }
