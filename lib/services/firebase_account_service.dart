@@ -75,6 +75,27 @@ class DatabaseAccountService {
     }
   }
   
+  // Always fetch username from Firestore (not from Auth cache)
+  Future<String> getCurrentUsernameFromDB() async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+      final docSnapshot = await _firestore
+          .collection(ACCOUNT_COLLECTION_REF)
+          .doc(userId)
+          .get();
+      if (!docSnapshot.exists) {
+        return 'User';
+      }
+      return docSnapshot.data()?['account_username'] ?? 'User';
+    } catch (e) {
+      print('Error getting username from DB: $e');
+      return 'User';
+    }
+  }
+  
   // Get current email - easier from Auth than Firestore
   Future<String> getCurrentEmail() async {
     return _auth.currentUser?.email ?? '';

@@ -19,5 +19,7 @@ class NavigationHelper {
     );
   }
 
-
+  static Widget profileSettingsPage(BuildContext context) {
+    return ProfileAndAccountSettings();
+  }
 }

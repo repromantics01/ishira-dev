@@ -560,6 +560,18 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
     );
   }
 
+  // Update this method to await navigation and reload after returning
+  Future<void> _navigateToProfileSettingsAndRefresh(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => NavigationHelper.profileSettingsPage(context),
+        fullscreenDialog: true,
+      ),
+    );
+    await _loadUserData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -590,8 +602,8 @@ class _AdopterDashboardState extends State<AdopterDashboard> {
               backgroundColor: const Color(0xFFF4EBEB),
               child: IconButton(
                 icon: const Icon(Icons.person, color: Color(0xFF725F63)),
-                onPressed: () {
-                  NavigationHelper.navigateToProfileSettings(context);
+                onPressed: () async {
+                  await _navigateToProfileSettingsAndRefresh(context);
                 },
               ),
             ),

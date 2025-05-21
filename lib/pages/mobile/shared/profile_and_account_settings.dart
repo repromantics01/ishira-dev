@@ -278,19 +278,16 @@ class _ProfileAndAccountSettingsState extends State<ProfileAndAccountSettings> {
                                   const EdgeInsets.symmetric(vertical: 15.0),
                               child: GestureDetector(
                                 onTap: () async {
-                                    final result = await Navigator.push(
+                                  final result = await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) => EditAccount(userData: _userData),
                                     ),
-                                    );
-                                    
-                                    // If we got updated data back, refresh the UI
-                                    if (result != null) {
-                                    setState(() {
-                                      _userData = result;
-                                    });
-                                    }
+                                  );
+                                  // Always reload user data after editing account
+                                  if (result == true) {
+                                    await _loadUserData();
+                                  }
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(

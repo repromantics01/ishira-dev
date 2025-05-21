@@ -60,15 +60,20 @@ class _EditAccountState extends State<EditAccount> {
         throw Exception('User not authenticated');
       }
 
+      bool updated = false;
+
       // Update username if changed
       if (_usernameController.text != widget.userData['username']) {
-        await _accountService.updateUsername( _usernameController.text);
+        await _accountService.updateUsername(_usernameController.text);
+        // Optionally update Firebase Auth displayName
+        await user.updateDisplayName(_usernameController.text);
+        updated = true;
       }
 
       // Update email if changed
       if (_emailController.text != widget.userData['email']) {
-        await user.updateEmail(_emailController.text);
-        await _accountService.updateEmail(user.uid, _emailController.text);
+        await _accountService.updateEmail(_emailController.text, _passwordController.text);
+        updated = true;
       }
 
       // Update password if provided
@@ -80,13 +85,14 @@ class _EditAccountState extends State<EditAccount> {
           });
           return;
         }
-        await user.updatePassword(_passwordController.text);
+        await _accountService.updatePassword(_passwordController.text, _confirmPasswordController.text);
+        updated = true;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Account details updated successfully')),
       );
-      Navigator.pop(context, true); // Return true to indicate successful update
+      Navigator.pop(context, updated); // Return true if any update was made
     } catch (e) {
       setState(() {
         _errorMessage = 'Error updating account: ${e.toString()}';

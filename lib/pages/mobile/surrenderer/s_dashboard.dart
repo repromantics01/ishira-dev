@@ -9,6 +9,7 @@ import 'package:pawsmatch/pages/mobile/surrenderer/surrender_history.dart'; // A
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/utils/navigation_helper.dart'; 
 import 'package:pawsmatch/widgets/user_profile_image.dart'; // Add this import
+import 'package:pawsmatch/pages/mobile/shared/profile_and_account_settings.dart'; // Add this import
 
 class SurrendererDashboard extends StatefulWidget {
   const SurrendererDashboard({super.key});
@@ -427,6 +428,18 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
     }
   }
 
+  // Update this method to await navigation and reload after returning
+  Future<void> _navigateToProfileSettingsAndRefresh(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileAndAccountSettings(), // Use your actual profile settings widget here
+        fullscreenDialog: true,
+      ),
+    );
+    await _loadUserData();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -454,9 +467,8 @@ class _SurrendererDashboardState extends State<SurrendererDashboard> {
               backgroundColor: Colors.grey[200],
               child: IconButton(
                 icon: const Icon(Icons.person, color: Color(0xFF725F63)),
-                onPressed: () {
-                  // Use the navigation helper
-                  NavigationHelper.navigateToProfileSettings(context);
+                onPressed: () async {
+                  await _navigateToProfileSettingsAndRefresh(context);
                 },
               ),
             ),
