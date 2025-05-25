@@ -94,7 +94,7 @@ class _AdopterOrganizationProfileState
           builder: (context) => ConversationPage(
             threadId: threadId,
             receiverId: widget.organization.org_id,
-            receiverName: widget.organization.org_name,
+            receiverName: widget.organization.org_name, // <-- correct
           ),
         ),
       );

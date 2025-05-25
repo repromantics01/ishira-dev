@@ -72,19 +72,41 @@ class _SwipePetDetailsState extends State<SwipePetDetails> with SingleTickerProv
     setState(() {
       _isLoading = true;
     });
-    
+
+    await Future.wait([
+      _loadPetPhotos(),
+      _loadOrganizationForPet(),
+    ]);
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  // --- FIX: Always use pet.org_id if available ---
+  Future<void> _loadOrganizationForPet() async {
     try {
-      await Future.wait([
-        _loadPetPhotos(),
-        _loadOrganizationDetails(),
-      ]);
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      String? orgId;
+      if (widget.pet.toJson().containsKey('org_id')) {
+        orgId = widget.pet.toJson()['org_id'];
+      } else if (widget.pet.toJson().containsKey('organization_id')) {
+        orgId = widget.pet.toJson()['organization_id'];
+      } else if ((widget.pet as dynamic).org_id != null) {
+        orgId = (widget.pet as dynamic).org_id;
+      }
+      if (orgId != null && orgId.isNotEmpty) {
+        final org = await _organizationService.getOrganizationById(orgId);
+        if (mounted && org != null) {
+          setState(() {
+            _organization = org;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading organization for pet: $e');
     }
   }
-  
+
   // Calculate pet age from birthdate - fixed to properly display ages under 1 year
   String _calculateAge(DateTime birthdate) {
     final now = DateTime.now();
@@ -358,58 +380,58 @@ class _SwipePetDetailsState extends State<SwipePetDetails> with SingleTickerProv
                                   ),
                                   
                                   // Organization section
-                                  Padding(
-                                    padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
-                                    child: Row(
-                                      children: [
-                                        // Organization logo
-                                        Container(
-                                          width: 50,
-                                          height: 50,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.1),
-                                                blurRadius: 8,
-                                                offset: Offset(0, 3),
-                                              ),
-                                            ],
-                                            image: DecorationImage(
-                                              image: _organization?.logo_url != null
-                                                ? NetworkImage(_organization!.logo_url!)
-                                                : AssetImage('assets/photos/org_logo_default.png') as ImageProvider,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 15),
-                                        // Organization info
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Posted by',
-                                              style: GoogleFonts.nunito(
-                                                fontSize: 13,
-                                                color: Colors.grey.shade600,
-                                              ),
-                                            ),
-                                            Text(
-                                              _organization?.org_name ?? 'Animal Shelter',
-                                              style: GoogleFonts.nunito(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                                color: Color(0xFF5D4037),
-                                                decoration: TextDecoration.underline,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  // Padding(
+                                  //   padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
+                                  //   child: Row(
+                                  //     children: [
+                                  //       // Organization logo
+                                  //       Container(
+                                  //         width: 50,
+                                  //         height: 50,
+                                  //         decoration: BoxDecoration(
+                                  //           color: Colors.white,
+                                  //           shape: BoxShape.circle,
+                                  //           boxShadow: [
+                                  //             BoxShadow(
+                                  //               color: Colors.black.withOpacity(0.1),
+                                  //               blurRadius: 8,
+                                  //               offset: Offset(0, 3),
+                                  //             ),
+                                  //           ],
+                                  //           image: DecorationImage(
+                                  //             image: _organization?.logo_url != null
+                                  //               ? NetworkImage(_organization!.logo_url!)
+                                  //               : AssetImage('assets/photos/org_logo_default.png') as ImageProvider,
+                                  //             fit: BoxFit.cover,
+                                  //           ),
+                                  //         ),
+                                  //       ),
+                                  //       SizedBox(width: 15),
+                                  //       // Organization info
+                                  //       // Column(
+                                  //       //   crossAxisAlignment: CrossAxisAlignment.start,
+                                  //       //   children: [
+                                  //       //     Text(
+                                  //       //       'Posted by',
+                                  //       //       style: GoogleFonts.nunito(
+                                  //       //         fontSize: 13,
+                                  //       //         color: Colors.grey.shade600,
+                                  //       //       ),
+                                  //       //     ),
+                                  //       //     Text(
+                                  //       //       _organization?.org_name ?? 'Animal Shelter',
+                                  //       //       style: GoogleFonts.nunito(
+                                  //       //         fontSize: 16,
+                                  //       //         fontWeight: FontWeight.w700,
+                                  //       //         color: Color(0xFF5D4037),
+                                  //       //         decoration: TextDecoration.underline,
+                                  //       //       ),
+                                  //       //     ),
+                                  //       //   ],
+                                  //       // ),
+                                  //     ],
+                                  //   ),
+                                  // ),
                                   
                                   // Divider
                                   Padding(

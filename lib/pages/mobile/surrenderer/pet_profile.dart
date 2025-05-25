@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:pawsmatch/models/organization.dart';
 import 'package:pawsmatch/models/pet.dart';
+import 'package:pawsmatch/services/firebase_organization_service.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
 import 'package:pawsmatch/services/firebase_photo_service.dart';
 import 'package:pawsmatch/services/supabase_client_service.dart';
@@ -27,14 +29,15 @@ class _PetProfileState extends State<PetProfile> {
   bool _isLoading = true;
   List<String> _photoUrls = [];
   int _currentPhotoIndex = 0;
+  Organization? _organization; // Add this field
   
   @override
   void initState() {
     super.initState();
-    // If pet data is provided, use it directly
     if (widget.pet != null) {
       _pet = widget.pet;
       _loadPetPhotos();
+      _loadOrganizationForPet(); // Load org for provided pet
     } else {
       _loadPetData();
     }
@@ -48,6 +51,7 @@ class _PetProfileState extends State<PetProfile> {
           _pet = petDoc.data();
         });
         await _loadPetPhotos();
+        await _loadOrganizationForPet(); // Load org after loading pet
       } else {
         setState(() {
           _isLoading = false;
@@ -87,6 +91,31 @@ class _PetProfileState extends State<PetProfile> {
         _isLoading = false;
       });
       print('Error loading pet photos: $e');
+    }
+  }
+
+  // --- FIX: Always use pet.org_id if available ---
+  Future<void> _loadOrganizationForPet() async {
+    if (_pet == null) return;
+    try {
+      String? orgId;
+      if (_pet!.toJson().containsKey('org_id')) {
+        orgId = _pet!.toJson()['org_id'];
+      } else if (_pet!.toJson().containsKey('organization_id')) {
+        orgId = _pet!.toJson()['organization_id'];
+      } else if ((_pet as dynamic).org_id != null) {
+        orgId = (_pet as dynamic).org_id;
+      }
+      if (orgId != null && orgId.isNotEmpty) {
+        final org = await FirebaseOrganizationService().getOrganizationById(orgId);
+        if (mounted && org != null) {
+          setState(() {
+            _organization = org;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading organization for pet: $e');
     }
   }
 

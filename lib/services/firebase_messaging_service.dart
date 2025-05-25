@@ -390,29 +390,43 @@ class FirebaseMessagingService {
       // Get both participants' data in parallel for efficiency
       final userData = await _fetchParticipantData(currentUser.uid);
       final orgData = await _fetchParticipantData(organizationId);
-      
+
+      // --- PATCH: Always use org_name for organization participant ---
+      String orgDisplayName = 'Organization';
+      String? orgLogoUrl;
+      bool orgIsVerified = false;
+      // Always fetch org_name from organization doc
+      final orgDoc = await _organizationsCollection.doc(organizationId).get();
+      if (orgDoc.exists) {
+        final orgJson = orgDoc.data() as Map<String, dynamic>;
+        orgDisplayName = orgJson['org_name'] as String? ?? 'Organization';
+        orgLogoUrl = orgJson['logo_url'] as String?;
+        orgIsVerified = orgJson['isVerified'] as bool? ?? false;
+      }
+      // --- END PATCH ---
+
       // Create thread participants info
       final Map<String, String> participantNames = {
         currentUser.uid: userData?.name ?? 'User',
-        organizationId: orgData?.name ?? 'Organization',
+        organizationId: orgDisplayName,
       };
       
       // Create participant avatar mapping
       final Map<String, String?> participantAvatars = {
         currentUser.uid: userData?.avatarUrl,
-        organizationId: orgData?.avatarUrl,
+        organizationId: orgLogoUrl ?? orgData?.avatarUrl,
       };
       
       // Create organization status mapping
       final Map<String, bool> participantIsOrg = {
         currentUser.uid: userData?.isOrganization ?? false,
-        organizationId: orgData?.isOrganization ?? true,
+        organizationId: true,
       };
       
       // Create verified status mapping
       final Map<String, bool> participantIsVerified = {
         currentUser.uid: userData?.isVerified ?? false,
-        organizationId: orgData?.isVerified ?? false,
+        organizationId: orgIsVerified,
       };
       
       // Create unread status (initially false for both)
@@ -447,12 +461,10 @@ class FirebaseMessagingService {
         currentUser.uid: 'User',
         organizationId: 'Organization',
       };
-      
       final Map<String, bool> unreadByUser = {
         currentUser.uid: false,
         organizationId: true,
       };
-      
       final MessageThread newThread = MessageThread(
         threadId: threadId,
         participantIds: [currentUser.uid, organizationId],
@@ -464,7 +476,6 @@ class FirebaseMessagingService {
         lastMessageSenderId: currentUser.uid,
         unreadByUser: unreadByUser,
       );
-      
       await _threadsCollection.doc(threadId).set(newThread.toJson());
       return threadId;
     }
@@ -594,11 +605,11 @@ class FirebaseMessagingService {
       final orgDoc = await _organizationsCollection.doc(participantId).get();
       if (orgDoc.exists) {
         final data = orgDoc.data() as Map<String, dynamic>;
-        // --- FIX: Use org_name as display name for organizations ---
+        // --- PATCH: Always use org_name as display name for organizations ---
         final String orgName = data['org_name'] as String? ?? 'Organization';
         final String? logoUrl = data['logo_url'] as String?;
         final bool isVerified = data['isVerified'] as bool? ?? false;
-        // --- END FIX ---
+        // --- END PATCH ---
         final participantData = ParticipantData(
           id: participantId,
           name: orgName,

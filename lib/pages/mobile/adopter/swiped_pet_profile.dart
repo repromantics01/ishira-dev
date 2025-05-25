@@ -50,7 +50,6 @@ class _SwipedPetProfileState extends State<SwipedPetProfile> {
   @override
   void initState() {
     super.initState();
-    // If pet data is provided, use it directly
     if (widget.pet != null) {
       _pet = widget.pet;
       _loadData();
@@ -59,17 +58,16 @@ class _SwipedPetProfileState extends State<SwipedPetProfile> {
     }
   }
 
-  // New method to load all data at once
+  // --- FIX: Always use pet.org_id if available ---
   Future<void> _loadData() async {
     try {
       setState(() {
         _isLoading = true;
       });
 
-      // Load photos and organization in parallel for better performance
       await Future.wait([
         _loadPetPhotos(),
-        _loadOrganizationFromSurrender(),
+        _loadOrganizationForPet(),
       ]);
 
       setState(() {
@@ -106,7 +104,40 @@ class _SwipedPetProfileState extends State<SwipedPetProfile> {
     }
   }
 
-  // New method to find organization from surrender records
+  // --- FIX: Prefer pet.org_id, fallback to surrender record ---
+  Future<void> _loadOrganizationForPet() async {
+    if (_pet == null) return;
+
+    try {
+      // Try to get org_id directly from the pet object
+      String? orgId;
+      // Try both 'org_id' and 'organization_id' for compatibility
+      if (_pet!.toJson().containsKey('org_id')) {
+        orgId = _pet!.toJson()['org_id'];
+      } else if (_pet!.toJson().containsKey('organization_id')) {
+        orgId = _pet!.toJson()['organization_id'];
+      } else if ((_pet as dynamic).org_id != null) {
+        orgId = (_pet as dynamic).org_id;
+      }
+
+      if (orgId != null && orgId.isNotEmpty) {
+        final org = await _organizationService.getOrganizationById(orgId);
+        if (mounted && org != null) {
+          setState(() {
+            _organization = org;
+          });
+          return;
+        }
+      }
+
+      // Fallback: Try to get from surrender record
+      await _loadOrganizationFromSurrender();
+    } catch (e) {
+      print('Error loading organization for pet: $e');
+      await _loadOrganizationFromSurrender();
+    }
+  }
+
   Future<void> _loadOrganizationFromSurrender() async {
     if (_pet == null) return;
 
