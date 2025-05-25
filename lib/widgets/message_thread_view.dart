@@ -28,9 +28,6 @@ class _MessageThreadViewState extends State<MessageThreadView> {
   final FirebaseProfileService _profileService = FirebaseProfileService();
   
   // Thread state variables
-  String _threadName = '';
-  String _otherUserId = '';
-  String? _otherUserAvatar;
   String _userType = 'Conversation Participant';
   bool _isSending = false;
   
@@ -81,9 +78,6 @@ class _MessageThreadViewState extends State<MessageThreadView> {
         _transitionInProgress = true;
         
         // Clear previous thread data immediately to avoid showing wrong content
-        _threadName = '';
-        _otherUserId = '';
-        _otherUserAvatar = null;
         _userType = 'Conversation Participant';
       });
       
@@ -158,7 +152,7 @@ class _MessageThreadViewState extends State<MessageThreadView> {
   // Send message with better error handling
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
-    if (message.isEmpty || _isSending || _otherUserId.isEmpty) return;
+    if (message.isEmpty || _isSending) return;
     
     setState(() {
       _isSending = true;
@@ -167,7 +161,7 @@ class _MessageThreadViewState extends State<MessageThreadView> {
     try {
       await widget.messagingService.sendMessage(
         threadId: widget.threadId,
-        receiverId: _otherUserId,
+        receiverId: _auth.currentUser?.uid ?? '',
         content: message,
       );
       
@@ -389,22 +383,19 @@ class _MessageThreadViewState extends State<MessageThreadView> {
             final currentUserId = _auth.currentUser?.uid ?? '';
             final otherParticipantId = thread.participantIds
                 .firstWhere((id) => id != currentUserId, orElse: () => '');
-            
-            // Update thread info
-            _threadName = thread.participantNames[otherParticipantId] ?? 'User';
-            _otherUserId = otherParticipantId;
-            _otherUserAvatar = thread.participantAvatars[otherParticipantId];
-            
+            final threadName = thread.participantNames[otherParticipantId] ?? 'User';
+            final otherUserAvatar = thread.participantAvatars[otherParticipantId];
+
             // Load user type in background without blocking UI
-            _loadUserType(_otherUserId);
-            
+            _loadUserType(otherParticipantId);
+
             // Build UI with loaded data
             return Row(
               children: [
                 // Avatar
                 UserProfileImage(
-                  imageUrl: _otherUserAvatar,
-                  fallbackText: _threadName,
+                  imageUrl: otherUserAvatar,
+                  fallbackText: threadName,
                   size: 48,
                   borderColor: Color(0xFFC0D6B6),
                   borderWidth: 2.0,
@@ -417,7 +408,7 @@ class _MessageThreadViewState extends State<MessageThreadView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _threadName,
+                        threadName,
                         style: TextStyle(
                           color: const Color(0xFF545454),
                           fontSize: 20,
@@ -788,8 +779,8 @@ class _MessageThreadViewState extends State<MessageThreadView> {
           // Avatar (only for other user's messages)
           if (!isCurrentUser)
             UserProfileImage(
-              imageUrl: _otherUserAvatar,
-              fallbackText: _threadName,
+              imageUrl: _auth.currentUser?.photoURL,
+              fallbackText: 'User',
               size: 36,
               borderColor: Colors.grey.shade300,
               borderWidth: 1.5,

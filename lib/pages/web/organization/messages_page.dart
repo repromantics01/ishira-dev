@@ -53,10 +53,12 @@ class _MessagesPageState extends State<MessagesPage> {
 
     // Only load threads after org ID is resolved
     _initializeOrganizationData();
-    // Remove: _loadThreadsFallback();
 
+    // Fix: Set selected thread if initialThreadId is provided
     if (widget.initialThreadId != null) {
-      _openThread(widget.initialThreadId!, widget.recipientId, widget.recipientName);
+      setState(() {
+        _selectedThreadId = widget.initialThreadId;
+      });
     }
   }
 
@@ -271,8 +273,9 @@ class _MessagesPageState extends State<MessagesPage> {
   
   // Method to open a specific conversation thread
   void _openThread(String threadId, String? recipientId, String? recipientName) {
-    // Implementation would load messages for this thread
-    print('Opening thread: $threadId with $recipientName (ID: $recipientId)');
+    setState(() {
+      _selectedThreadId = threadId;
+    });
   }
 
   @override
@@ -714,11 +717,10 @@ class _MessagesPageState extends State<MessagesPage> {
         
         return GestureDetector(
           onTap: () {
-            setState(() {
-              _selectedThreadId = thread.threadId;
-              // Mark thread as read when selected
-              _messagingService.markThreadAsRead(thread.threadId);
-            });
+            // Fix: Use _openThread to set selected thread and trigger UI update
+            _openThread(thread.threadId, otherParticipantId, otherParticipantName);
+            // Mark thread as read when selected
+            _messagingService.markThreadAsRead(thread.threadId);
           },
           child: Container(
             margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
