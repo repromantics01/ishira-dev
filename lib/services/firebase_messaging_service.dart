@@ -18,9 +18,9 @@ class FirebaseMessagingService {
   final CollectionReference _messagesCollection = 
       FirebaseFirestore.instance.collection('messages');
   final CollectionReference _accountsCollection =
-      FirebaseFirestore.instance.collection('accounts');
+      FirebaseFirestore.instance.collection('account');
   final CollectionReference _organizationsCollection =
-      FirebaseFirestore.instance.collection('organizations');
+      FirebaseFirestore.instance.collection('organization');
       
   // In-memory cache for participant data to reduce database calls
   final Map<String, ParticipantData> _participantCache = {};
@@ -172,35 +172,37 @@ class FirebaseMessagingService {
               : participantIds)
           .get();
       
-      // Process accounts
       for (final doc in accountsSnapshot.docs) {
         try {
           final data = doc.data() as Map<String, dynamic>;
-          data['account_id'] = doc.id; // Ensure ID is set
-          
+          data['account_id'] = doc.id;
           final String username = data['account_username'] as String? ?? 'User';
           final accountType = _parseAccountType(data['account_type']);
-          
-          // Get user profile photo if available
           String? avatarUrl;
-          try {
-            if (accountType == AccountType.User) {
-              final userProfile = await _firestore
-                  .collection('profiles')
-                  .doc(doc.id)
-                  .get();
-              
-              if (userProfile.exists) {
-                avatarUrl = (userProfile.data() as Map<String, dynamic>)['profile_photo_url'] as String?;
+          String displayName = username;
+
+          // --- FIX: Fetch profile for users and use full name if available ---
+          if (accountType == AccountType.User) {
+            final profileQuery = await _firestore
+                .collection('profile')
+                .where('account_id', isEqualTo: doc.id)
+                .limit(1)
+                .get();
+            if (profileQuery.docs.isNotEmpty) {
+              final profile = profileQuery.docs.first.data();
+              final firstName = profile['first_name'] as String? ?? '';
+              final lastName = profile['last_name'] as String? ?? '';
+              if (firstName.isNotEmpty || lastName.isNotEmpty) {
+                displayName = ('$firstName $lastName').trim();
               }
+              avatarUrl = profile['profile_image_url'] as String?;
             }
-          } catch (e) {
-            print('Error getting user profile photo: $e');
           }
-          
+          // --- END FIX ---
+
           result[doc.id] = ParticipantData(
             id: doc.id,
-            name: username,
+            name: displayName,
             isOrganization: accountType == AccountType.OrgAdmin,
             avatarUrl: avatarUrl,
           );
@@ -221,15 +223,14 @@ class FirebaseMessagingService {
                 : remainingIds)
             .get();
             
-        // Process organizations
         for (final doc in orgsSnapshot.docs) {
           try {
             final data = doc.data() as Map<String, dynamic>;
-            data['org_id'] = doc.id; // Ensure ID is set
-            
+            data['org_id'] = doc.id;
+            // --- FIX: Use org_name as display name for organizations ---
             final String orgName = data['org_name'] as String? ?? 'Organization';
             final String? logoUrl = data['logo_url'] as String?;
-            
+            // --- END FIX ---
             result[doc.id] = ParticipantData(
               id: doc.id,
               name: orgName,
@@ -243,7 +244,6 @@ class FirebaseMessagingService {
         }
       }
       
-      // For any remaining IDs, create generic placeholder entries
       for (final id in participantIds) {
         if (!result.containsKey(id)) {
           result[id] = ParticipantData(
@@ -259,7 +259,7 @@ class FirebaseMessagingService {
     
     return result;
   }
-  
+
   // Enhance a thread with cached participant data
   void _enhanceThreadWithCachedData(MessageThread thread) {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -550,57 +550,55 @@ class FirebaseMessagingService {
 
   // Helper to fetch single participant data
   Future<ParticipantData?> _fetchParticipantData(String participantId) async {
-    // Check cache first
     if (_participantCache.containsKey(participantId)) {
       return _participantCache[participantId];
     }
-    
     try {
-      // Try account collection first
       final accountDoc = await _accountsCollection.doc(participantId).get();
-      
       if (accountDoc.exists) {
         final data = accountDoc.data() as Map<String, dynamic>;
         final String username = data['account_username'] as String? ?? 'User';
         final accountType = _parseAccountType(data['account_type']);
-        
-        // Get user profile photo if available
         String? avatarUrl;
-        try {
-          if (accountType == AccountType.User) {
-            final userProfile = await _firestore
-                .collection('profiles')
-                .doc(participantId)
-                .get();
-            
-            if (userProfile.exists) {
-              avatarUrl = (userProfile.data() as Map<String, dynamic>)['profile_photo_url'] as String?;
+        String displayName = username;
+
+        // --- FIX: Fetch profile for users and use full name if available ---
+        if (accountType == AccountType.User) {
+          final profileQuery = await _firestore
+              .collection('profile')
+              .where('account_id', isEqualTo: participantId)
+              .limit(1)
+              .get();
+          if (profileQuery.docs.isNotEmpty) {
+            final profile = profileQuery.docs.first.data();
+            final firstName = profile['first_name'] as String? ?? '';
+            final lastName = profile['last_name'] as String? ?? '';
+            if (firstName.isNotEmpty || lastName.isNotEmpty) {
+              displayName = ('$firstName $lastName').trim();
             }
+            avatarUrl = profile['profile_image_url'] as String?;
           }
-        } catch (e) {
-          print('Error getting user profile photo: $e');
         }
-        
+        // --- END FIX ---
+
         final participantData = ParticipantData(
           id: participantId,
-          name: username,
+          name: displayName,
           isOrganization: accountType == AccountType.OrgAdmin,
           avatarUrl: avatarUrl,
         );
-        
         _participantCache[participantId] = participantData;
         return participantData;
       }
-      
-      // Try organization collection if not in accounts
+
       final orgDoc = await _organizationsCollection.doc(participantId).get();
-      
       if (orgDoc.exists) {
         final data = orgDoc.data() as Map<String, dynamic>;
+        // --- FIX: Use org_name as display name for organizations ---
         final String orgName = data['org_name'] as String? ?? 'Organization';
         final String? logoUrl = data['logo_url'] as String?;
         final bool isVerified = data['isVerified'] as bool? ?? false;
-        
+        // --- END FIX ---
         final participantData = ParticipantData(
           id: participantId,
           name: orgName,
@@ -608,12 +606,9 @@ class FirebaseMessagingService {
           avatarUrl: logoUrl,
           isVerified: isVerified,
         );
-        
         _participantCache[participantId] = participantData;
         return participantData;
       }
-      
-      // Not found in either collection
       return null;
     } catch (e) {
       print('Error fetching participant data: $e');
