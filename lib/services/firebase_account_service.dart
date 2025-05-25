@@ -151,6 +151,12 @@ class DatabaseAccountService {
           .collection(ACCOUNT_COLLECTION_REF)
           .doc(user.uid)
           .update({'account_email': newEmail});
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'operation-not-allowed') {
+        throw Exception('Email update is not allowed. Please contact support.');
+      }
+      print('Error updating email: $e');
+      throw Exception(e.message ?? e.code);
     } catch (e) {
       print('Error updating email: $e');
       throw Exception(e);
@@ -185,6 +191,12 @@ class DatabaseAccountService {
       // Optional: Update hashed password in Firestore
       // In most cases, it's better not to store the password in Firestore,
       // since Firebase Auth handles password hashing and authentication
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'operation-not-allowed') {
+        throw Exception('Password update is not allowed. Please contact support.');
+      }
+      print('Error updating password: $e');
+      throw Exception(e.message ?? e.code);
     } catch (e) {
       print('Error updating password: $e');
       throw Exception(e);

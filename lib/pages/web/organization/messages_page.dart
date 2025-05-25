@@ -40,6 +40,7 @@ class _MessagesPageState extends State<MessagesPage> {
   bool _showDebugInfo = false;
   String _debugInfo = '';
   String? _currentOrgID;
+  bool _orgIdResolved = false; // Track if org ID is resolved
   
   @override
   void initState() {
@@ -49,64 +50,71 @@ class _MessagesPageState extends State<MessagesPage> {
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
-    
-    // Debug: Log the current user ID and properly resolve org ID
-    _initializeOrganizationData();
-    
-    // Load threads with fallback immediately in case stream fails
-    _loadThreadsFallback();
 
-    // If we have a thread ID, open that conversation immediately
+    // Only load threads after org ID is resolved
+    _initializeOrganizationData();
+    // Remove: _loadThreadsFallback();
+
     if (widget.initialThreadId != null) {
       _openThread(widget.initialThreadId!, widget.recipientId, widget.recipientName);
     }
   }
-  
+
   // Initialize organization data
   Future<void> _initializeOrganizationData() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
-      print('Current org admin ID: ${currentUser.uid}');
-      
       try {
-        // Properly await the Future to get the actual organization ID
         _currentOrgID = await _organizationService.getOrganizationIDById(currentUser.uid);
         print('Current org ID: $_currentOrgID');
-        
-        // If we got an update, refresh the UI
         if (mounted) {
-          setState(() {});
+          setState(() {
+            _orgIdResolved = true;
+          });
+          // Only load threads after org ID is resolved
+          _loadThreadsFallback();
         }
       } catch (e) {
         print('Error getting organization ID: $e');
+        if (mounted) {
+          setState(() {
+            _orgIdResolved = true;
+          });
+        }
       }
     } else {
       print('No current user found');
+      setState(() {
+        _orgIdResolved = true;
+      });
     }
   }
-  
+
   Future<void> _loadThreadsFallback() async {
+    if (_currentOrgID == null) {
+      setState(() {
+        _threads = [];
+        _isLoading = false;
+        _debugInfo += '\nNo organization ID available, cannot load threads.';
+      });
+      return;
+    }
     try {
       setState(() {
         _debugInfo = 'Starting thread fetch for organization...';
         _isLoading = true;
       });
-      
+
       final threads = await _messagingService.getThreadsForCurrentUserFallback(
         organizationId: _currentOrgID
       );
-      
+
       if (mounted) {
         setState(() {
           _threads = threads;
           _isLoading = false;
           _debugInfo += '\nFetched ${threads.length} threads';
-          
-          if (_currentOrgID != null) {
-            _debugInfo += '\nUsed organization ID: $_currentOrgID';
-          } else {
-            _debugInfo += '\nNo organization ID available, used user ID';
-          }
+          _debugInfo += '\nUsed organization ID: $_currentOrgID';
         });
       }
     } catch (e) {
@@ -365,194 +373,198 @@ class _MessagesPageState extends State<MessagesPage> {
                 top: 56,
                 right: 20,
                 bottom: 20,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Threads sidebar with fixed width
-                    Container(
-                      width: 380,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
+                child: _orgIdResolved
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Threads sidebar with fixed width
+                        Container(
+                          width: 380,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: Offset(0, 5),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          // Header section
-                          Container(
-                            padding: EdgeInsets.fromLTRB(24, 28, 24, 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Title with badge
-                                Row(
+                          child: Column(
+                            children: [
+                              // Header section
+                              Container(
+                                padding: EdgeInsets.fromLTRB(24, 28, 24, 16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    // Title with badge
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Messages',
+                                          style: TextStyle(
+                                            color: const Color(0xFF545454),
+                                            fontSize: 32,
+                                            fontFamily: 'DM Sans',
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xFFC0D6B6),
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: StreamBuilder<List<MessageThread>>(
+                                            stream: _messagingService.getThreadsForCurrentUser(
+                                              organizationId: _currentOrgID
+                                            ),
+                                            builder: (context, snapshot) {
+                                              final threadCount = snapshot.hasData ? 
+                                                  snapshot.data!.length : _threads.length;
+                                              return Text(
+                                                '$threadCount',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontFamily: 'DM Sans',
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              );
+                                            }
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8),
+                                    
+                                    // Subtitle with generic description
                                     Text(
-                                      'Messages',
+                                      'Conversations with users about your pets',
                                       style: TextStyle(
-                                        color: const Color(0xFF545454),
-                                        fontSize: 32,
+                                        color: Colors.grey.shade600,
+                                        fontSize: 14,
                                         fontFamily: 'DM Sans',
-                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                    SizedBox(width: 12),
+                                    
+                                    SizedBox(height: 20),
+                                    
+                                    // Search bar with generic hint
                                     Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      height: 48,
                                       decoration: BoxDecoration(
-                                        color: Color(0xFFC0D6B6),
-                                        borderRadius: BorderRadius.circular(20),
+                                        color: const Color(0xFFF5F5F5),
+                                        borderRadius: BorderRadius.circular(24),
                                       ),
-                                      child: StreamBuilder<List<MessageThread>>(
-                                        stream: _messagingService.getThreadsForCurrentUser(
-                                          organizationId: _currentOrgID
+                                      child: TextField(
+                                        controller: _searchController,
+                                        decoration: InputDecoration(
+                                          filled: true,
+                                          fillColor: const Color(0xFFF5F5F5),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(24),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                          contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 22),
+                                          hintText: 'Search conversations',
+                                          hintStyle: TextStyle(
+                                            color: Colors.black.withOpacity(0.5),
+                                            fontSize: 16,
+                                            fontFamily: 'DM Sans',
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                          prefixIcon: Icon(
+                                            Icons.search,
+                                            color: Colors.black.withOpacity(0.5),
+                                            size: 20,
+                                          ),
                                         ),
-                                        builder: (context, snapshot) {
-                                          final threadCount = snapshot.hasData ? 
-                                              snapshot.data!.length : _threads.length;
-                                          return Text(
-                                            '$threadCount',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontFamily: 'DM Sans',
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          );
-                                        }
                                       ),
                                     ),
                                   ],
                                 ),
-                                SizedBox(height: 8),
-                                
-                                // Subtitle with generic description
-                                Text(
-                                  'Conversations with users about your pets',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 14,
-                                    fontFamily: 'DM Sans',
-                                  ),
+                              ),
+                              
+                              // Divider
+                              Container(
+                                height: 1,
+                                color: Colors.grey.shade200,
+                              ),
+                              
+                              // Threads list with improved error handling
+                              Expanded(
+                                child: StreamBuilder<List<MessageThread>>(
+                                  stream: _currentOrgID == null
+                                    ? Stream.value([])
+                                    : _messagingService.getThreadsForCurrentUser(
+                                        organizationId: _currentOrgID
+                                      ),
+                                  builder: (context, snapshot) {
+                                    // Handle loading state with skeleton loaders
+                                    if (snapshot.connectionState == ConnectionState.waiting && _isLoading) {
+                                      return _buildLoadingThreads();
+                                    }
+                                    
+                                    // Use stream data if available, otherwise use fallback data
+                                    final List<MessageThread> threadsToDisplay;
+                                    if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                                      threadsToDisplay = snapshot.data!;
+                                      _threads = threadsToDisplay; // Update stored threads
+                                    } else {
+                                      // If stream fails, use our cached threads
+                                      threadsToDisplay = _threads;
+                                      
+                                      // If both are empty, show empty state
+                                      if (threadsToDisplay.isEmpty) {
+                                        return _buildEmptyThreadsList();
+                                      }
+                                    }
+                                    
+                                    // Apply search filter
+                                    final filteredThreads = _getFilteredThreads(threadsToDisplay);
+                                    if (filteredThreads.isEmpty) {
+                                      return _buildEmptySearchResults();
+                                    }
+                                    
+                                    return _buildThreadsList(filteredThreads);
+                                  },
                                 ),
-                                
-                                SizedBox(height: 20),
-                                
-                                // Search bar with generic hint
-                                Container(
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF5F5F5),
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: TextField(
-                                    controller: _searchController,
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: const Color(0xFFF5F5F5),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(24),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 22),
-                                      hintText: 'Search conversations',
-                                      hintStyle: TextStyle(
-                                        color: Colors.black.withOpacity(0.5),
-                                        fontSize: 16,
-                                        fontFamily: 'DM Sans',
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                      prefixIcon: Icon(
-                                        Icons.search,
-                                        color: Colors.black.withOpacity(0.5),
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        SizedBox(width: 20),
+                        
+                        // Chat view container - expanded to fill available space
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(30),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 5),
                                 ),
                               ],
                             ),
+                            child: _selectedThreadId != null
+                                ? MessageThreadView(
+                                    threadId: _selectedThreadId!,
+                                    messagingService: _messagingService,
+                                  )
+                                : _buildEmptyConversationView(),
                           ),
-                          
-                          // Divider
-                          Container(
-                            height: 1,
-                            color: Colors.grey.shade200,
-                          ),
-                          
-                          // Threads list with improved error handling
-                          Expanded(
-                            child: StreamBuilder<List<MessageThread>>(
-                              stream: _messagingService.getThreadsForCurrentUser(
-                                organizationId: _currentOrgID
-                              ),
-                              builder: (context, snapshot) {
-                                // Handle loading state with skeleton loaders
-                                if (snapshot.connectionState == ConnectionState.waiting && _isLoading) {
-                                  return _buildLoadingThreads();
-                                }
-                                
-                                // Use stream data if available, otherwise use fallback data
-                                final List<MessageThread> threadsToDisplay;
-                                if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                                  threadsToDisplay = snapshot.data!;
-                                  _threads = threadsToDisplay; // Update stored threads
-                                } else {
-                                  // If stream fails, use our cached threads
-                                  threadsToDisplay = _threads;
-                                  
-                                  // If both are empty, show empty state
-                                  if (threadsToDisplay.isEmpty) {
-                                    return _buildEmptyThreadsList();
-                                  }
-                                }
-                                
-                                // Apply search filter
-                                final filteredThreads = _getFilteredThreads(threadsToDisplay);
-                                if (filteredThreads.isEmpty) {
-                                  return _buildEmptySearchResults();
-                                }
-                                
-                                return _buildThreadsList(filteredThreads);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    SizedBox(width: 20),
-                    
-                    // Chat view container - expanded to fill available space
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: Offset(0, 5),
-                            ),
-                          ],
                         ),
-                        child: _selectedThreadId != null
-                            ? MessageThreadView(
-                                threadId: _selectedThreadId!,
-                                messagingService: _messagingService,
-                              )
-                            : _buildEmptyConversationView(),
-                      ),
-                    ),
-                  ],
-                ),
+                      ],
+                    )
+                  : Center(child: CircularProgressIndicator()),
               ),
             ],
           ),

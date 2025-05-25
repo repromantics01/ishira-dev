@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pawsmatch/services/firebase_account_service.dart';
 import 'package:pawsmatch/widgets/logout_button.dart';
+import 'package:flutter/services.dart';
 
 class EditAccount extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -15,16 +16,15 @@ class EditAccount extends StatefulWidget {
 class _EditAccountState extends State<EditAccount> {
   final _formKey = GlobalKey<FormState>();
   final DatabaseAccountService _accountService = DatabaseAccountService();
-  
+
   late final TextEditingController _usernameController;
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
-  late final TextEditingController _confirmPasswordController;
-  
+  String? _currentPassword; // Store the current password entered via modal
+
   bool _isLoading = false;
   String? _errorMessage;
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
 
   @override
   void initState() {
@@ -32,7 +32,6 @@ class _EditAccountState extends State<EditAccount> {
     _usernameController = TextEditingController(text: widget.userData['username']);
     _emailController = TextEditingController(text: widget.userData['email']);
     _passwordController = TextEditingController();
-    _confirmPasswordController = TextEditingController();
   }
 
   @override
@@ -40,8 +39,61 @@ class _EditAccountState extends State<EditAccount> {
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  // Show modal to enter current password
+  Future<void> _showCurrentPasswordModal() async {
+    final TextEditingController _currentPasswordController = TextEditingController();
+    String? error;
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Enter Current Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('For security, please enter your current password.'),
+              TextField(
+                controller: _currentPasswordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Current Password',
+                  errorText: error,
+                ),
+                autofocus: true,
+                onSubmitted: (_) => Navigator.of(context).pop(_currentPasswordController.text),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (_currentPasswordController.text.isEmpty) {
+                  setState(() {
+                    error = 'Password required';
+                  });
+                } else {
+                  Navigator.of(context).pop(_currentPasswordController.text);
+                }
+              },
+              child: Text('Submit'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _currentPassword = result;
+      });
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -60,39 +112,46 @@ class _EditAccountState extends State<EditAccount> {
         throw Exception('User not authenticated');
       }
 
-      bool updated = false;
-
       // Update username if changed
       if (_usernameController.text != widget.userData['username']) {
         await _accountService.updateUsername(_usernameController.text);
-        // Optionally update Firebase Auth displayName
-        await user.updateDisplayName(_usernameController.text);
-        updated = true;
       }
 
       // Update email if changed
       if (_emailController.text != widget.userData['email']) {
-        await _accountService.updateEmail(_emailController.text, _passwordController.text);
-        updated = true;
+        if (_currentPassword == null) {
+          await _showCurrentPasswordModal();
+        }
+        if (_currentPassword == null || _currentPassword!.isEmpty) {
+          throw Exception('Current password required for email update');
+        }
+        try {
+          await _accountService.updateEmail(_emailController.text, _currentPassword!);
+        } on Exception catch (e) {
+          // Show a more user-friendly error if operation-not-allowed
+          final msg = e.toString().toLowerCase();
+          if (msg.contains('operation-not-allowed')) {
+            throw Exception('Email update is currently disabled. Please contact support.');
+          }
+          rethrow;
+        }
       }
 
       // Update password if provided
       if (_passwordController.text.isNotEmpty) {
-        if (_passwordController.text != _confirmPasswordController.text) {
-          setState(() {
-            _errorMessage = 'Passwords do not match';
-            _isLoading = false;
-          });
-          return;
+        if (_currentPassword == null) {
+          await _showCurrentPasswordModal();
         }
-        await _accountService.updatePassword(_passwordController.text, _confirmPasswordController.text);
-        updated = true;
+        if (_currentPassword == null || _currentPassword!.isEmpty) {
+          throw Exception('Current password required for password update');
+        }
+        await _accountService.updatePassword(_currentPassword!, _passwordController.text);
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Account details updated successfully')),
       );
-      Navigator.pop(context, updated); // Return true if any update was made
+      Navigator.pop(context, true); // Return true to indicate successful update
     } catch (e) {
       setState(() {
         _errorMessage = 'Error updating account: ${e.toString()}';
@@ -203,7 +262,7 @@ class _EditAccountState extends State<EditAccount> {
                         controller: _usernameController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Username cannot be empty';
+                            return 'Username is required';
                           }
                           return null;
                         },
@@ -216,10 +275,7 @@ class _EditAccountState extends State<EditAccount> {
                         controller: _emailController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Email cannot be empty';
-                          }
-                          if (!value.contains('@') || !value.contains('.')) {
-                            return 'Please enter a valid email';
+                            return 'Email is required';
                           }
                           return null;
                         },
@@ -230,12 +286,21 @@ class _EditAccountState extends State<EditAccount> {
                       _buildFormField(
                         label: 'New Password',
                         controller: _passwordController,
-                        isPassword: true,
                         obscureText: _obscurePassword,
-                        toggleObscure: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                        onTap: () async {
+                          // Show modal for current password when focusing on new password
+                          await _showCurrentPasswordModal();
                         },
                         validator: (value) {
                           if (value != null && value.isNotEmpty && value.length < 6) {
@@ -246,119 +311,39 @@ class _EditAccountState extends State<EditAccount> {
                       ),
                       const SizedBox(height: 20),
                       
-                      // Confirm Password field
-                      _buildFormField(
-                        label: 'Confirm Password',
-                        controller: _confirmPasswordController,
-                        isPassword: true,
-                        obscureText: _obscureConfirmPassword,
-                        toggleObscure: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
-                        validator: (value) {
-                          if (_passwordController.text.isNotEmpty &&
-                              value != _passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
-                      ),
-                      
-                      if (_errorMessage != null)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Text(
-                            _errorMessage!,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 14,
+                      // Save button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _saveChanges,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF725F63),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
-                        ),
-                      
-                      // Buttons
-                      const SizedBox(height: 40),
-                      Center(
-                        child: Column(
-                          children: [
-                            // Cancel button
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.pop(context);
-                              },
-                              child: Container(
-                                width: 169,
-                                height: 40,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                decoration: ShapeDecoration(
-                                  color: const Color(0xFFEDEDED),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(250),
+                          child: _isLoading
+                              ? CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                )
+                              : const Text(
+                                  'Save Changes',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
                                   ),
                                 ),
-                                child: const Center(
-                                  child: Text(
-                                    'CANCEL',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Color(0xFF1E2C2B),
-                                      fontSize: 14,
-                                      fontFamily: 'DM Sans',
-                                      fontWeight: FontWeight.w500,
-                                      height: 1.14,
-                                      letterSpacing: 1.25,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            
-                            // Confirm button
-                            GestureDetector(
-                              onTap: _isLoading ? null : _saveChanges,
-                              child: Container(
-                                width: 169,
-                                height: 40,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                decoration: ShapeDecoration(
-                                  color: _isLoading 
-                                      ? const Color(0xFFD9D9D9) 
-                                      : const Color(0xFFC1BEBE),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(250),
-                                  ),
-                                ),
-                                child: Center(
-                                  child: _isLoading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Color(0xFF1E2C2B),
-                                          ),
-                                        )
-                                      : const Text(
-                                          'CONFIRM',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: Color(0xFF1E2C2B),
-                                            fontSize: 14,
-                                            fontFamily: 'DM Sans',
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.14,
-                                            letterSpacing: 1.25,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
+                      if (_errorMessage != null) ...[
+                        SizedBox(height: 16),
+                        Text(
+                          _errorMessage!,
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -370,66 +355,27 @@ class _EditAccountState extends State<EditAccount> {
     );
   }
 
+  // Helper for building form fields
   Widget _buildFormField({
     required String label,
     required TextEditingController controller,
-    required String? Function(String?)? validator,
-    bool isPassword = false,
     bool obscureText = false,
-    VoidCallback? toggleObscure,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+    VoidCallback? onTap,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF787878),
-            fontSize: 12,
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w700,
-          ),
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      decoration: InputDecoration(
+        labelText: label,
+        suffixIcon: suffixIcon,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        const SizedBox(height: 8),
-        Container(
-          height: 48,
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(
-                width: 1,
-                color: Color(0xFFC5C6CC),
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: TextFormField(
-            controller: controller,
-            obscureText: isPassword && obscureText,
-            validator: validator,
-            style: const TextStyle(
-              color: Color(0xFF8F9098),
-              fontSize: 14,
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.w400,
-              height: 1.43,
-            ),
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              border: InputBorder.none,
-              suffixIcon: isPassword
-                  ? IconButton(
-                      icon: Icon(
-                        obscureText ? Icons.visibility_off : Icons.visibility,
-                        color: const Color(0xFF8F9098),
-                        size: 20,
-                      ),
-                      onPressed: toggleObscure,
-                    )
-                  : null,
-            ),
-          ),
-        ),
-      ],
+      ),
+      validator: validator,
+      onTap: onTap,
     );
   }
 }

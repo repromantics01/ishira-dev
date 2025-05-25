@@ -835,6 +835,7 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
               ),
             );
           },
+          organizationId: _organizationId, // Pass org ID for edit as well
         );
       },
     );
@@ -872,6 +873,7 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
       is_neutered_or_spayed: false,
       acquisition_type: AcquisitionType.Rescued,
       photo_id: [],
+      org_id: _organizationId, // Set org_id for new pet
     );
     
     showDialog(
@@ -892,6 +894,7 @@ class _ManagePetsPageState extends State<ManagePetsPage> {
               ),
             );
           },
+          organizationId: _organizationId, // Pass org ID for add
         );
       },
     );

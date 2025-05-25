@@ -28,24 +28,31 @@ class _InboxPageState extends State<InboxPage> {
     super.initState();
     _tryLoadThreads();
   }
-  
+
   Future<void> _tryLoadThreads() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
-      // Get current user ID
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
       }
-      
-      // Attempt to get threads using fallback method - explicitly pass current user ID
+
+      // Try to get organization ID for this user
+      String? orgId;
+      try {
+        orgId = await _organizationService.getOrganizationIDById(currentUser.uid);
+      } catch (e) {
+        orgId = null;
+      }
+
+      // Use orgId if available, otherwise fallback to user UID
       final threads = await _messagingService.getThreadsForCurrentUserFallback(
-        organizationId: currentUser.uid
+        organizationId: orgId ?? currentUser.uid
       );
-      
+
       if (mounted) {
         setState(() {
           _fallbackThreads = threads;

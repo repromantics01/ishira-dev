@@ -35,8 +35,12 @@ class FirebaseMessagingService {
     // Use organization ID if provided, otherwise fall back to user ID
     final participantId = organizationId ?? currentUser.uid;
 
+    // Only allow organizationId for org inboxes
+    if (organizationId != null && organizationId.isEmpty) {
+      return Stream.value([]);
+    }
+
     try {
-      // Use simple query without ordering to avoid index requirement
       return _threadsCollection
           .where('participant_ids', arrayContains: participantId)
           .snapshots()
@@ -44,17 +48,13 @@ class FirebaseMessagingService {
             final threads = snapshot.docs
                 .map((doc) => MessageThread.fromJson(doc.data() as Map<String, dynamic>))
                 .toList();
-                
-            // Sort in memory instead of in the database query
+
             threads.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
-                
-            // Enhance threads with participant data
             await _enhanceThreadsWithParticipantData(threads);
             return threads;
           });
     } catch (e) {
       print('Error setting up message threads stream: $e');
-      // Return an empty stream on error
       return Stream.value([]);
     }
   }
@@ -67,27 +67,27 @@ class FirebaseMessagingService {
     }
 
     // Use organization ID if provided, otherwise fall back to user ID
-    final participantId = organizationId;
+    final participantId = organizationId ?? currentUser.uid;
+
+    // If organizationId is required but not provided, return empty
+    if (organizationId != null && organizationId.isEmpty) {
+      return [];
+    }
 
     try {
       print('Using fallback method to get message threads for participant: $participantId');
-      
-      // First approach: Just filter by participant_ids without ordering
+
       final querySnapshot = await _threadsCollection
           .where('participant_ids', arrayContains: participantId)
           .get();
-      
-      // Convert to thread objects
+
       final threads = querySnapshot.docs
           .map((doc) => MessageThread.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
-      
-      // Sort in-memory instead of in the query
+
       threads.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
-      
-      // Enhance threads with participant info
       await _enhanceThreadsWithParticipantData(threads);
-      
+
       print('Successfully retrieved ${threads.length} message threads with fallback method');
       return threads;
     } catch (e) {
