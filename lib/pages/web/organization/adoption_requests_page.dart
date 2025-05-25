@@ -788,13 +788,20 @@ class _AdoptionRequestsPageState extends State<AdoptionRequestsPage> {
                 'application_status': ApplicationStatus.Approved.toString().split('.').last,
                 'date_reviewed': DateTime.now().toIso8601String()
               });
-              
+
+              // Also update the pet status to Adopted/Unavailable
+              if (pet != null) {
+                await _firestore.collection('pet').doc(pet.pet_id).update({
+                  'pet_status': PetStatus.Adopted.toString().split('.').last
+                });
+              }
+
               // Close the modal
               Navigator.of(context).pop();
-              
+
               // Refresh the data
               _loadAdoptionRequests();
-              
+
               // Show a success message
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

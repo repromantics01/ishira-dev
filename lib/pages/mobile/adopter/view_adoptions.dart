@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pawsmatch/models/pet.dart';
+import 'package:pawsmatch/pages/mobile/adopter/swiped_pet_profile.dart';
 import 'package:pawsmatch/pages/mobile/shared/conversation_page.dart';
 import 'package:pawsmatch/services/firebase_adopt_service.dart';
 import 'package:pawsmatch/services/firebase_pet_service.dart';
@@ -506,10 +507,21 @@ class _ViewAdoptionsPageState extends State<ViewAdoptionsPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Message Organization button - only show for approved adoptions
+                    // Pet Info button - only show for approved adoptions
                     if (status == 'Approved')
                       ElevatedButton(
-                        onPressed: () => _navigateToConversation(adoptionDetails),
+                        onPressed: () {
+                          // Open SwipedPetProfile for this pet
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SwipedPetProfile(
+                                petId: pet.pet_id,
+                                pet: pet,
+                              ),
+                            ),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF725F63),
                           padding: EdgeInsets.symmetric(vertical: 12),
@@ -521,10 +533,10 @@ class _ViewAdoptionsPageState extends State<ViewAdoptionsPage> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.message, color: Colors.white, size: 18),
+                            Icon(Icons.pets, color: Colors.white, size: 18),
                             SizedBox(width: 8),
                             Text(
-                              'Message Organization',
+                              'View Pet Info',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -535,7 +547,7 @@ class _ViewAdoptionsPageState extends State<ViewAdoptionsPage> {
                         ),
                       ),
                     
-                    // Add spacing only if we showed the message button
+                    // Add spacing only if we showed the pet info button
                     if (status == 'Approved')
                       SizedBox(height: 10),
                       

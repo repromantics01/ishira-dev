@@ -855,12 +855,12 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
     );
   }
 
-  // Modified to improve pet photo display
+  // Modified to improve pet photo display and add approve/reject/close actions
   void _showDetailsModal(BuildContext context, Surrender surrender) {
     final pet = _pets[surrender.pet_id];
     final account = _userAccounts[surrender.account_id];
     final profile = _userProfiles[surrender.account_id];
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -869,13 +869,39 @@ class _SurrenderRequestsPageState extends State<SurrenderRequestsPage> {
           pet: pet,
           userAccount: account,
           userProfile: profile,
+          organizationId: _organizationId,
+          onApprove: surrender.surrender_status == SurrenderStatus.Pending
+              ? () async {
+                  try {
+                    // Approve the surrender request
+                    await _approveSurrenderRequest(surrender.surrender_id);
+                    Navigator.of(context).pop();
+                    _loadSurrenderRequests();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to approve request: $e')),
+                    );
+                  }
+                }
+              : null,
+          onReject: surrender.surrender_status == SurrenderStatus.Pending
+              ? () async {
+                  try {
+                    // Reject the surrender request
+                    await _rejectSurrenderRequest(surrender.surrender_id);
+                    Navigator.of(context).pop();
+                    _loadSurrenderRequests();
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to reject request: $e')),
+                    );
+                  }
+                }
+              : null,
           onClose: () {
             Navigator.of(context).pop();
-            // Refresh the data when modal is closed
             _loadSurrenderRequests();
           },
-          // Pass organization ID for photo display
-          organizationId: _organizationId,
         );
       },
     );
